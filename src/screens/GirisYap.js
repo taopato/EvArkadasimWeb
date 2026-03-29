@@ -36,6 +36,7 @@ const GoogleLoginButton = ({
   login,
 }) => {
   const [googleLoading, setGoogleLoading] = useState(false);
+  const isWeb = Platform.OS === 'web';
 
   const googleRedirectUri = useMemo(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -71,7 +72,13 @@ const GoogleLoginButton = ({
   const handleGoogleLogin = async () => {
     try {
       setGoogleLoading(true);
-      await promptAsync();
+      await promptAsync(
+        isWeb
+          ? {
+              windowName: '_self',
+            }
+          : undefined
+      );
     } catch (error) {
       Alert.alert('Google girisi basarisiz', error?.message || 'Islem baslatilamadi.');
       setGoogleLoading(false);

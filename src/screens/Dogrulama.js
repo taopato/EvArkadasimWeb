@@ -16,6 +16,8 @@ import { useTheme } from '../shared/theme/ThemeProvider';
 import { authApi } from '../services/api';
 import { isSixDigitCode } from '../shared/validation/authValidation';
 
+const RESEND_COOLDOWN_SECONDS = 180;
+
 const VerificationScreen = ({ navigation, route }) => {
   const { email, fullName, password } = route.params || {};
   const { login } = useAuth();
@@ -25,7 +27,7 @@ const VerificationScreen = ({ navigation, route }) => {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS);
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -88,7 +90,7 @@ const VerificationScreen = ({ navigation, route }) => {
     try {
       await authApi.sendVerificationCode(email);
       Alert.alert('Basarili', 'Yeni dogrulama kodu gonderildi.');
-      setSecondsLeft(60);
+      setSecondsLeft(RESEND_COOLDOWN_SECONDS);
     } catch (error) {
       Alert.alert('Hata', error?.response?.data?.message || error?.message || 'Kod gonderilemedi');
     } finally {
@@ -130,7 +132,9 @@ const VerificationScreen = ({ navigation, route }) => {
             {email} adresine 6 haneli dogrulama kodu gonderildi.
           </Text>
           <Text style={[styles.countdownText, { color: theme.colors.text.secondary }]}>
-            {secondsLeft > 0 ? `Yeniden gonderim: ${secondsLeft} sn` : 'Yeniden gonderime hazir'}
+            {secondsLeft > 0
+              ? `Yeniden gonderim: ${secondsLeft} sn`
+              : 'Yeniden gonderime hazir'}
           </Text>
         </View>
 
@@ -154,7 +158,11 @@ const VerificationScreen = ({ navigation, route }) => {
         >
           <View style={[commonStyles.buttonContent, { backgroundColor: colorThemes.warning.background }]}>
             <Text style={commonStyles.buttonText}>
-              {loading ? 'Gonderiliyor...' : secondsLeft > 0 ? `Kodu Tekrar Gonder (${secondsLeft})` : 'Kodu Tekrar Gonder'}
+              {loading
+                ? 'Gonderiliyor...'
+                : secondsLeft > 0
+                  ? `Kodu Tekrar Gonder (${secondsLeft})`
+                  : 'Kodu Tekrar Gonder'}
             </Text>
             <Text style={commonStyles.buttonSubtext}>Yeni kod talep edin</Text>
           </View>
