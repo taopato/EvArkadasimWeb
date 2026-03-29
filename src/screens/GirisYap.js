@@ -21,44 +21,21 @@ import { useTheme } from '../shared/theme/ThemeProvider';
 import { TextInput as ThemedTextInput } from '../shared/ui/TextInput';
 import { Button as ThemedButton } from '../shared/ui/Button';
 import { GOOGLE_CLIENT_IDS } from '../shared/config/env';
+import { isValidEmail, normalizeEmail } from '../shared/validation/authValidation';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const LOGO = require('../assets/icon.png');
 
-const GirisYap = ({ navigation }) => {
-  const { login } = useAuth();
-  const { theme } = useTheme();
-  const CommonStyles = useCommonStyles();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+const GoogleLoginButton = ({
+  isExpoGo,
+  projectNameForProxy,
+  googleConfigured,
+  googleClientConfig,
+  theme,
+  login,
+}) => {
   const [googleLoading, setGoogleLoading] = useState(false);
-  const isExpoGo = Constants?.appOwnership === 'expo';
-  const projectNameForProxy = Constants?.expoConfig?.owner && Constants?.expoConfig?.slug
-    ? `@${Constants.expoConfig.owner}/${Constants.expoConfig.slug}`
-    : undefined;
-
-  const googleConfigured = useMemo(
-    () => Boolean(
-      GOOGLE_CLIENT_IDS.web ||
-      GOOGLE_CLIENT_IDS.android ||
-      GOOGLE_CLIENT_IDS.ios ||
-      GOOGLE_CLIENT_IDS.expo
-    ),
-    []
-  );
-
-  const googleClientConfig = useMemo(
-    () => ({
-      expoClientId: GOOGLE_CLIENT_IDS.expo || undefined,
-      webClientId: GOOGLE_CLIENT_IDS.web || undefined,
-      androidClientId: GOOGLE_CLIENT_IDS.android || undefined,
-      iosClientId: GOOGLE_CLIENT_IDS.ios || undefined,
-      clientId: GOOGLE_CLIENT_IDS.web || GOOGLE_CLIENT_IDS.expo || undefined,
-    }),
-    []
-  );
 
   const googleRedirectUri = useMemo(() => {
     if (isExpoGo) {
@@ -87,15 +64,152 @@ const GirisYap = ({ navigation }) => {
     scopes: ['openid', 'profile', 'email'],
   });
 
+  const handleGoogleLogin = async () => {
+    try {
+      setGoogleLoading(true);
+      await promptAsync();
+    } catch (error) {
+      Alert.alert('Google girisi basarisiz', error?.message || 'Islem baslatilamadi.');
+      setGoogleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const runGoogleLogin = async () => {
+      if (response?.type !== 'success') {
+        if (response?.type && response.type !== 'dismiss') {
+          setGoogleLoading(false);
+        }
+        return;
+      }
+
+      const idToken = response?.params?.id_token || response?.authentication?.idToken;
+      if (!idToken) {
+        setGoogleLoading(false);
+        Alert.alert('Google girisi basarisiz', 'Google kimlik belirteci alinamadi.');
+        return;
+      }
+
+      try {
+        const apiResponse = await authApi.googleLogin(idToken);
+        const payload = apiResponse?.data || {};
+        const token = payload?.token;
+        const user = payload?.user;
+
+        if (!token || !user) {
+          throw new Error('Google giris yaniti eksik.');
+        }
+
+        await login(user, token);
+      } catch (error) {
+        Alert.alert(
+          'Google girisi basarisiz',
+          error?.response?.data?.message || error?.message || 'Sunucuya giris yapilamadi.'
+        );
+      } finally {
+        setGoogleLoading(false);
+      }
+    };
+
+    runGoogleLogin();
+  }, [response, login]);
+
+  return (
+    <>
+      <TouchableOpacity
+        style={[
+          styles.googleButton,
+          {
+            borderColor: theme.colors.neutral[200],
+            backgroundColor: theme.colors.background,
+          },
+        ]}
+        onPress={handleGoogleLogin}
+        disabled={!request || googleLoading}
+        activeOpacity={0.85}
+      >
+        <Text style={[styles.googleIcon, { color: theme.colors.primary[600] }]}>G</Text>
+        <Text style={[styles.googleText, { color: theme.colors.text.primary }]}>
+          {googleLoading ? 'Google ile baglaniliyor...' : 'Google ile giris yap'}
+        </Text>
+      </TouchableOpacity>
+
+      {googleConfigured && isExpoGo && (
+        <Text style={[styles.helper, { color: theme.colors.warning[600] }]}>
+          Expo Go ile denemek icin ayrica GOOGLE_EXPO_CLIENT_ID tanimlanmali.
+        </Text>
+      )}
+    </>
+  );
+};
+
+const GirisYap = ({ navigation }) => {
+  const { login } = useAuth();
+  const { theme } = useTheme();
+  const CommonStyles = useCommonStyles();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const isExpoGo = Constants?.appOwnership === 'expo';
+  const projectNameForProxy = Constants?.expoConfig?.owner && Constants?.expoConfig?.slug
+    ? `@${Constants.expoConfig.owner}/${Constants.expoConfig.slug}`
+    : undefined;
+  const googleEnabledForCurrentPlatform = Platform.OS === 'web'
+    ? Boolean(GOOGLE_CLIENT_IDS.web)
+    : isExpoGo
+      ? Boolean(GOOGLE_CLIENT_IDS.expo || GOOGLE_CLIENT_IDS.web)
+      : Boolean(
+          GOOGLE_CLIENT_IDS.android ||
+            GOOGLE_CLIENT_IDS.ios ||
+            GOOGLE_CLIENT_IDS.expo ||
+            GOOGLE_CLIENT_IDS.web
+        );
+
+  const googleConfigured = useMemo(
+    () =>
+      Boolean(
+        GOOGLE_CLIENT_IDS.web ||
+          GOOGLE_CLIENT_IDS.android ||
+          GOOGLE_CLIENT_IDS.ios ||
+          GOOGLE_CLIENT_IDS.expo
+      ),
+    []
+  );
+
+  const googleClientConfig = useMemo(
+    () => ({
+      expoClientId: GOOGLE_CLIENT_IDS.expo || undefined,
+      webClientId: GOOGLE_CLIENT_IDS.web || undefined,
+      androidClientId: GOOGLE_CLIENT_IDS.android || undefined,
+      iosClientId: GOOGLE_CLIENT_IDS.ios || undefined,
+      clientId: GOOGLE_CLIENT_IDS.web || GOOGLE_CLIENT_IDS.expo || undefined,
+    }),
+    []
+  );
+
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Hata', 'Lütfen e-posta ve şifrenizi giriniz.');
+    const normalizedEmail = normalizeEmail(email);
+
+    if (!normalizedEmail || !password.trim()) {
+      setErrorMessage('Lutfen e-posta ve sifrenizi girin.');
+      Alert.alert('Hata', 'Lutfen e-posta ve sifrenizi girin.');
       return;
     }
 
+    if (!isValidEmail(normalizedEmail)) {
+      setErrorMessage('Lutfen gecerli bir e-posta adresi girin.');
+      Alert.alert('Hata', 'Lutfen gecerli bir e-posta adresi girin.');
+      return;
+    }
+
+    setErrorMessage('');
     setLoading(true);
     try {
-      const response = await authApi.login({ email, password });
+      const response = await authApi.login({
+        email: normalizedEmail,
+        password,
+      });
       const raw = response?.data || {};
       const data = raw?.data ?? raw ?? {};
 
@@ -134,93 +248,50 @@ const GirisYap = ({ navigation }) => {
         const fullName = findValueByKeyList(data, ['fullName', 'name']);
         const emailFromApi = findValueByKeyList(data, ['email', 'mail']);
         if (userId || fullName || emailFromApi) {
-          user = { id: userId ?? 0, fullName: fullName ?? email, email: emailFromApi ?? email };
+          user = {
+            id: userId ?? 0,
+            fullName: fullName ?? normalizedEmail,
+            email: emailFromApi ?? normalizedEmail,
+          };
         }
       }
 
       if (token && user) {
+        setErrorMessage('');
         await login(user, token);
         return;
       }
 
-      Alert.alert('Giriş başarısız', raw?.message || 'Lütfen bilgilerinizi kontrol edin.');
+      setErrorMessage(raw?.message || 'Lutfen bilgilerinizi kontrol edin.');
+      Alert.alert('Giris basarisiz', raw?.message || 'Lutfen bilgilerinizi kontrol edin.');
     } catch (error) {
       const status = error?.response?.status;
-      const raw = error?.response?.data?.message || error?.response?.data || error?.message || '';
+      const validationErrors = error?.response?.data?.errors;
+      const raw =
+        error?.response?.data?.message || error?.response?.data || error?.message || '';
       const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
       const lower = text.toLowerCase();
 
-      let message = 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
-      if (status === 401 || lower.includes('şifre') || lower.includes('password') || lower.includes('invalid')) {
-        message = 'E-posta veya şifre hatalı.';
-      } else if (lower.includes('locked') || lower.includes('kilit')) {
-        message = 'Hesabınız geçici olarak kilitlendi. Bir süre sonra tekrar deneyin.';
+      let message = 'Giris basarisiz. Lutfen bilgilerinizi kontrol edin.';
+      if (Array.isArray(validationErrors) && validationErrors.length > 0) {
+        message = validationErrors.map((item) => item?.message).filter(Boolean).join('\n');
+      } else
+      if (status === 401 && (lower.includes('kayitli bir kullanici bulunamadi') || lower.includes('uye olun'))) {
+        message = 'Bu e-posta ile kayitli bir hesap bulunamadi. Lutfen once uye olun.';
+      } else if (status === 401 && (lower.includes('sifreniz yanlis') || lower.includes('wrong password'))) {
+        message = 'Sifreniz yanlis. Lutfen tekrar deneyin.';
+      } else if (status === 401) {
+        message = 'E-posta veya sifre hatali.';
       } else if (text) {
         message = text;
       }
 
-      Alert.alert('Giriş başarısız', message);
+      setErrorMessage(message);
+      Alert.alert('Giris basarisiz', message);
     } finally {
       setLoading(false);
     }
   };
-
-  const handleGoogleLogin = async () => {
-    if (!googleConfigured || (isExpoGo && !GOOGLE_CLIENT_IDS.web)) {
-      Alert.alert(
-        'Google girişi hazır değil',
-        isExpoGo
-          ? 'Expo Go ile test için GOOGLE_EXPO_CLIENT_ID alanı doldurulmalı.'
-          : 'Frontend ve backend için Google client ID alanları henüz doldurulmamış görünüyor.'
-      );
-      return;
-    }
-
-    try {
-      setGoogleLoading(true);
-      await promptAsync();
-    } catch (error) {
-      Alert.alert('Google girişi başarısız', error?.message || 'İşlem başlatılamadı.');
-      setGoogleLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const runGoogleLogin = async () => {
-      if (response?.type !== 'success') {
-        if (response?.type && response.type !== 'dismiss') {
-          setGoogleLoading(false);
-        }
-        return;
-      }
-
-      const idToken = response?.params?.id_token || response?.authentication?.idToken;
-      if (!idToken) {
-        setGoogleLoading(false);
-        Alert.alert('Google girişi başarısız', 'Google kimlik doğrulama belirteci alınamadı.');
-        return;
-      }
-
-      try {
-        const apiResponse = await authApi.googleLogin(idToken);
-        const payload = apiResponse?.data || {};
-        const token = payload?.token;
-        const user = payload?.user;
-
-        if (!token || !user) {
-          throw new Error('Google giriş yanıtı eksik.');
-        }
-
-        await login(user, token);
-      } catch (error) {
-        Alert.alert('Google girişi başarısız', error?.response?.data?.message || error?.message || 'Sunucuya giriş yapılamadı.');
-      } finally {
-        setGoogleLoading(false);
-      }
-    };
-
-    runGoogleLogin();
-  }, [response, login, navigation]);
 
   return (
     <KeyboardAvoidingView
@@ -233,18 +304,43 @@ const GirisYap = ({ navigation }) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={[CommonStyles.content, styles.content, { backgroundColor: theme.colors.background }]}>
+        <View
+          style={[
+            CommonStyles.content,
+            styles.content,
+            { backgroundColor: theme.colors.background },
+          ]}
+        >
           <View style={styles.hero}>
-            <View style={[styles.logoWrap, { backgroundColor: theme.colors.primary[50], borderColor: theme.colors.primary[200] }]}>
+            <View
+              style={[
+                styles.logoWrap,
+                {
+                  backgroundColor: theme.colors.primary[50],
+                  borderColor: theme.colors.primary[200],
+                },
+              ]}
+            >
               <Image source={LOGO} style={styles.logo} resizeMode="contain" />
             </View>
-            <Text style={[styles.heading, { color: theme.colors.text.primary }]}>Ev Arkadaşım</Text>
+            <Text style={[styles.heading, { color: theme.colors.text.primary }]}>
+              Ev Arkadasim
+            </Text>
             <Text style={[styles.subheading, { color: theme.colors.text.secondary }]}>
-              Harcamaları paylaş, borçları gör, ödemeleri tek yerden yönet.
+              Harcamalari paylas, borclari gor, odemeleri tek yerden yonet.
             </Text>
           </View>
 
-          <View style={[CommonStyles.card, styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.neutral[200] }]}>
+          <View
+            style={[
+              CommonStyles.card,
+              styles.card,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.neutral[200],
+              },
+            ]}
+          >
             <ThemedTextInput
               style={{ marginBottom: 12 }}
               placeholder="E-posta"
@@ -255,44 +351,57 @@ const GirisYap = ({ navigation }) => {
             />
             <ThemedTextInput
               style={{ marginBottom: 12 }}
-              placeholder="Şifre"
+              placeholder="Sifre"
               secureTextEntry
               value={password}
               onChangeText={setPassword}
             />
 
-            <ThemedButton title="Giriş Yap" onPress={handleLogin} loading={loading} />
+            {!!errorMessage && (
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: theme.colors.error[50],
+                    borderColor: theme.colors.error[200],
+                  },
+                ]}
+              >
+                <Text style={[styles.errorText, { color: theme.colors.error[700] }]}>
+                  {errorMessage}
+                </Text>
+              </View>
+            )}
 
-            <TouchableOpacity
-              style={[styles.googleButton, { borderColor: theme.colors.neutral[200], backgroundColor: theme.colors.background }]}
-              onPress={handleGoogleLogin}
-              disabled={!request || googleLoading}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.googleIcon, { color: theme.colors.primary[600] }]}>G</Text>
-              <Text style={[styles.googleText, { color: theme.colors.text.primary }]}>
-                {googleLoading ? 'Google ile bağlanılıyor...' : 'Google ile giriş yap'}
-              </Text>
-            </TouchableOpacity>
+            <ThemedButton title="Giris Yap" onPress={handleLogin} loading={loading} />
 
-            {!googleConfigured && (
+            {!googleEnabledForCurrentPlatform && (
               <Text style={[styles.helper, { color: theme.colors.warning[600] }]}>
-                Google client ID bilgileri tanımlanınca bu buton aktif şekilde çalışacak.
+                Google girisi bu ortam icin henuz yapilandirilmamis. Ekranin geri kalani sorunsuz calismaya devam eder.
               </Text>
             )}
 
-            {googleConfigured && isExpoGo && (
-              <Text style={[styles.helper, { color: theme.colors.warning[600] }]}>
-                Expo Go ile denemek için ayrıca `GOOGLE_EXPO_CLIENT_ID` tanımlanmalı.
-              </Text>
+            {googleEnabledForCurrentPlatform && (
+              <GoogleLoginButton
+                isExpoGo={isExpoGo}
+                projectNameForProxy={projectNameForProxy}
+                googleConfigured={googleConfigured}
+                googleClientConfig={googleClientConfig}
+                theme={theme}
+                login={login}
+              />
             )}
 
             <TouchableOpacity onPress={() => navigation.navigate('ForgotPasswordScreen')}>
-              <Text style={[styles.link, { color: theme.colors.text.secondary }]}>Şifremi unuttum</Text>
+              <Text style={[styles.link, { color: theme.colors.text.secondary }]}>
+                Sifremi unuttum
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('SignupScreen')}>
-              <Text style={[styles.link, { color: theme.colors.primary[600] }]}>Hesabın yok mu? Kayıt ol</Text>
+              <Text style={[styles.link, { color: theme.colors.primary[600] }]}>
+                Hesabin yok mu? Kayit ol
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -364,6 +473,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
+  },
+  errorBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  errorText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
   },
   link: {
     marginTop: 14,
