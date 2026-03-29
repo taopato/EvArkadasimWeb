@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity,
+  View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert,
 } from 'react-native';
 import { houseApi, paymentsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -119,10 +119,41 @@ export default function Odemeler({ route, navigation }) {
         : item.status === 'Rejected' ? theme.colors.error[600]
           : theme.colors.warning[600];
 
+    const isPayer = Number(item.payerId) === Number(user?.id);
+    const canDelete = isPayer && item.status === 'Pending';
+
+    const handleDelete = () => {
+      Alert.alert('Odemeyi Sil', 'Bu odeme bildirimini silmek istediginizden emin misiniz?', [
+        { text: 'Iptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await paymentsApi.delete(item.id, user.id);
+              load();
+              try { eventBus.emit('payments:updated'); } catch {}
+            } catch (err) {
+              Alert.alert('Hata', err?.response?.data?.message || 'Odeme silinemedi');
+            }
+          }
+        }
+      ]);
+    };
+
     return (
       <View style={[styles.card, { borderLeftColor: statusColor }]}>
-        <Text style={styles.title}>{item.payerName} {'->'} {item.toName}</Text>
-        <Text style={styles.sub}>{item.date ? new Date(item.date).toLocaleString('tr-TR') : '-'}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>{item.payerName} {'->'} {item.toName}</Text>
+            <Text style={styles.sub}>{item.date ? new Date(item.date).toLocaleString('tr-TR') : '-'}</Text>
+          </View>
+          {canDelete && (
+            <TouchableOpacity onPress={handleDelete} style={{ padding: 4 }}>
+              <Text style={{ fontSize: 18 }}>🗑️</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         {item.note ? <Text style={styles.note}>{item.note}</Text> : null}
         <Text style={styles.meta}>{item.paymentMethod}</Text>
         <Text style={[styles.amount, { color: statusColor }]}>

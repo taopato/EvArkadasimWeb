@@ -42,6 +42,14 @@ export default function SettingsScreen({ navigation }) {
           </View>
         </View>
 
+        <TouchableOpacity style={styles.rowBtn} activeOpacity={0.88} onPress={() => navigation.navigate('ProfilDuzenle')}>
+          <View>
+            <Text style={styles.rowTitle}>Profili Düzenle</Text>
+            <Text style={styles.rowDesc}>Ad soyad ve şifre bilgilerini güncelle</Text>
+          </View>
+          <Text style={styles.rowArrow}>›</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.rowBtn} activeOpacity={0.88} onPress={() => navigation.navigate('ThemeSettingsScreen')}>
           <View>
             <Text style={styles.rowTitle}>Tema</Text>

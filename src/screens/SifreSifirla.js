@@ -76,6 +76,8 @@ const ResetPasswordScreen = ({ route, navigation }) => {
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
+            onSubmitEditing={handleReset}
+            blurOnSubmit={false}
           />
           <Text style={styles.helper}>{PASSWORD_RULES_TEXT}</Text>
           <TouchableOpacity

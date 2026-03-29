@@ -57,6 +57,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
+            onSubmitEditing={handleSendCode}
+            blurOnSubmit={false}
           />
           <TouchableOpacity
             style={[styles.button, loading && { opacity: 0.5 }]}
