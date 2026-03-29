@@ -55,6 +55,9 @@ import HarcamaListesi from './src/screens/HarcamaListesi';
 import HarcamaOzeti from './src/screens/HarcamaOzeti';
 import FisDetayi from './src/screens/FisDetayi';
 import FisGecmisi from './src/screens/FisGecmisi';
+import DavetKabul from './src/screens/DavetKabul';
+import ProfilDuzenle from './src/screens/ProfilDuzenle';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -86,6 +89,81 @@ function LoadingScreen() {
   );
 }
 
+const linking = {
+  prefixes: ['evarkadasim://', 'https://evarkadasim.co', 'https://www.evarkadasim.co'],
+  config: {
+    screens: {
+      Home: 'home',
+      Login: 'login',
+      Register: 'register',
+      SignupScreen: 'signup',
+      ForgotPasswordScreen: 'forgot-password',
+      ResetPasswordScreen: 'reset-password',
+      VerificationScreen: 'verify',
+      ExpensesScreen: 'expenses',
+      PaymentsScreen: 'payments',
+      PendingPaymentsScreen: 'pending-payments',
+      Odemeler: 'odemeler',
+      BekleyenOdemeler: 'bekleyen-odemeler',
+      Harcamalar: 'harcamalar',
+      NewRecurringChargeScreen: 'new-recurring-charge',
+      ExpenseDetail: 'expense-detail',
+      Ayarlar: 'ayarlar',
+      ThemeSettingsScreen: 'theme-settings',
+      AddHousemate: 'add-housemate',
+      HarcamaListesi: 'harcama-listesi',
+      ExpenseListScreen: 'expense-list',
+      DebtSummaryScreen: 'debt-summary',
+      ExpenseApproval: 'expense-approval',
+      GrupListesi: 'grup-listesi',
+      EvUyeleri: 'ev-uyeleri',
+      Borclar: 'borclar',
+      AlacaklarListesi: 'alacaklar-listesi',
+      Alacaklarim: 'alacaklarim',
+      HarcamaDetayi: 'harcama-detayi',
+      HarcamaEkle: 'harcama-ekle',
+      FisDetayi: 'fis-detayi',
+      FisGecmisi: 'fis-gecmisi',
+      Ozet: 'ozet',
+      YeniEvGrubu: 'yeni-ev-grubu',
+      EvGrubuArkadaslarim: 'ev-grubu-arkadaslarim',
+      DavetEt: 'davet-et',
+      DavetiyeKabul: 'davetiye-kabul',
+      OdemeOnayi: 'odeme-onayi',
+      Faturalar: 'faturalar',
+      FaturaEkle: 'fatura-ekle',
+      FaturaListesi: 'fatura-listesi',
+      FaturaDetayi: 'fatura-detayi',
+      BillDetail: 'bill-detail',
+      FaturaOlustur: 'fatura-olustur',
+      BekleyenKatkilar: 'bekleyen-katkilar',
+      OdemeEkle: 'odeme-ekle',
+      GiderListesi: 'gider-listesi',
+      DuzenliGiderEkle: 'duzenli-gider-ekle',
+      DuzenliGiderEkleScreen: 'duzenli-gider-ekle-screen',
+      AlacakBorcIcmi: 'alacak-borc-detayi',
+      EvHarcamaOzeti: 'ev-harcama-ozeti',
+      KisiDetayi: 'kisi-detayi',
+      LedgerDetail: 'ledger-detail',
+      BillsOverviewScreen: 'bills-overview',
+      UtilityBillCreate: 'utility-bill-create',
+      PendingContributions: 'pending-contributions',
+      PlanliOdemeler: 'planli-odemeler',
+      TumHarcamalar: 'tum-harcamalar',
+      HarcamaOzeti: 'harcama-ozeti',
+      HarcamaListesiDetay: 'harcama-listesi-detay',
+      DavetKabul: {
+        path: 'davet-kabul',
+        parse: {
+          token: (token) => token,
+          houseId: (id) => Number(id),
+          email: (email) => decodeURIComponent(email),
+        },
+      }
+    }
+  }
+};
+
 function ThemedNavigator() {
   const { theme } = useTheme();
   const { user, loading } = useAuth();
@@ -106,6 +184,7 @@ function ThemedNavigator() {
 
   return (
     <NavigationContainer
+      linking={linking}
       key={user ? 'auth-nav' : 'guest-nav'}
       theme={{
         dark: theme.mode !== 'light',
@@ -142,6 +221,7 @@ function ThemedNavigator() {
             <Stack.Screen name="ForgotPasswordScreen" component={SifremiUnuttum} options={{ title: 'Şifremi Unuttum' }} />
             <Stack.Screen name="ResetPasswordScreen" component={SifreSifirla} options={{ title: 'Şifreyi Sıfırla' }} />
             <Stack.Screen name="VerificationScreen" component={Dogrulama} options={{ title: 'Doğrulama' }} />
+            <Stack.Screen name="DavetKabul" component={DavetKabul} options={{ title: 'Eve Katıl', headerShown: false }} />
           </>
         ) : (
           <>
@@ -155,7 +235,8 @@ function ThemedNavigator() {
             <Stack.Screen name="NewRecurringChargeScreen" component={DuzenliGiderEkle} options={{ title: '' }} />
             <Stack.Screen name="ExpenseDetail" component={HarcamaDetayi} options={{ title: 'Harcama Detayı' }} />
             <Stack.Screen name="Ayarlar" component={Ayarlar} options={{ title: 'Ayarlar' }} />
-            <Stack.Screen name="ThemeSettingsScreen" component={TemaAyarlari} options={{ title: 'Tema' }} />
+            <Stack.Screen name="ProfilDuzenle" component={ProfilDuzenle} options={{ title: 'Profili Düzenle' }} />
+            <Stack.Screen name="ThemeSettingsScreen" component={TemaAyarlari} options={{ title: 'Tema Ayarları' }} />
             <Stack.Screen name="AddHousemate" component={EvArkadasiEkle} options={{ title: 'Ev Arkadaşı Ekle' }} />
             <Stack.Screen name="HarcamaListesi" component={TumHarcamalar} options={{ title: '' }} />
             <Stack.Screen name="ExpenseListScreen" component={TumHarcamalar} options={{ title: '' }} />

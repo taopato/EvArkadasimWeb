@@ -149,8 +149,8 @@ export const authApi = {
     return { data: { token, user, raw } };
   },
   sendVerificationCode: (email, purpose = 'register') => api.post('/Auth/SendVerificationCode', { email, purpose }),
-  verifyCodeAndRegister: (email, code, fullName, password) =>
-    api.post('/Auth/VerifyCodeAndRegister', { email, code, fullName, password }).then((res) => {
+  verifyCodeAndRegister: (email, code, fullName, password, invitationToken) =>
+    api.post('/Auth/VerifyCodeAndRegister', { email, code, fullName, password, invitationToken }).then((res) => {
       const raw = res?.data || {};
       const token = raw?.token;
       const user = token
@@ -160,11 +160,12 @@ export const authApi = {
             fullName: raw?.fullName ?? fullName,
           }
         : undefined;
-      return { data: { token, user, raw } };
+      return { data: { token, user, raw, joinedHouseId: raw?.joinedHouseId ?? null } };
     }),
   verifyCodeForReset: (email, code) => api.post('/Auth/VerifyCodeForReset', { email, code }),
   resetPassword: (email, code, newPassword) =>
     api.post('/Auth/ResetPassword', { email, code, newPassword }),
+  updateProfile: (userId, data) => api.put(`/Users/${userId}/Profile`, data),
 };
 
 // ---------------- HOUSES ----------------
@@ -251,6 +252,8 @@ export const paymentsApi = {
 
   reject: (paymentId) => api.post(`/Payments/RejectPayment/${paymentId}`),
   rejectPayment: (paymentId) => api.post(`/Payments/RejectPayment/${paymentId}`),
+  delete: (paymentId, requestingUserId) =>
+    api.delete(`/Payments/${paymentId}?requestingUserId=${requestingUserId}`),
 };
 
 // ---------------- EXPENSES ----------------

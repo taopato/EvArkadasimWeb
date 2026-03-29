@@ -188,6 +188,25 @@ const HomeScreen = ({ navigation }) => {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {dashboardStats.pendingCount > 0 && (
+          <TouchableOpacity 
+            style={styles.notificationCard} 
+            activeOpacity={0.88}
+            onPress={() => navigation.navigate('BekleyenOdemeler', { userId: user?.id })}
+          >
+            <View style={styles.notificationIconWrap}>
+              <Text style={styles.notificationIconText}>💰</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.notificationTitle}>Onay Bekleyen Ödemeniz Var</Text>
+              <Text style={styles.notificationDesc}>
+                {dashboardStats.pendingCount} adet ödeme işlemini onaylamanız veya reddetmeniz gerekiyor.
+              </Text>
+            </View>
+            <Text style={styles.notificationArrow}>›</Text>
+          </TouchableOpacity>
+        )}
+
         <HeroHeader
           title="Haftalık ev harcaması"
           subtitle={`Merhaba, ${user?.fullName || 'Kullanıcı'}`}
@@ -391,6 +410,30 @@ const makeStyles = (theme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
     scrollContent: { paddingBottom: 24 },
+    notificationCard: {
+      marginHorizontal: 16,
+      marginTop: 16,
+      backgroundColor: theme.colors.warning[50],
+      borderWidth: 1,
+      borderColor: theme.colors.warning[200],
+      borderRadius: 20,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    notificationIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: theme.colors.warning[100],
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    notificationIconText: { fontSize: 20 },
+    notificationTitle: { color: theme.colors.warning[800], fontWeight: '800', fontSize: 15, marginBottom: 2 },
+    notificationDesc: { color: theme.colors.warning[700], fontSize: 13, lineHeight: 18, opacity: 0.9 },
+    notificationArrow: { color: theme.colors.warning[400], fontSize: 24, fontWeight: '700' },
     section: { paddingHorizontal: 16, paddingTop: 14 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     sectionTitle: { color: theme.colors.text.secondary, fontSize: 14, fontWeight: '700' },

@@ -7,7 +7,9 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-  Platform
+  Platform,
+  Modal,
+  TextInput
 } from 'react-native';
 import useScrollRestore from '../hooks/useScrollRestore';
 import { useAuth } from '../context/AuthContext';
@@ -22,14 +24,19 @@ const HouseMembersScreen = ({ route, navigation }) => {
   const { listRef, handleScroll } = useScrollRestore(`HouseMembersScreen:${houseId ?? 'all'}`);
   const { theme } = useTheme();
   const CommonStyles = useCommonStyles();
+  
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   
-  // KPI verileri
   const [memberCount, setMemberCount] = useState(0);
   const [monthlyBillsTotal, setMonthlyBillsTotal] = useState(0);
   const [netBalance, setNetBalance] = useState(0);
+  const [creatorUserId, setCreatorUserId] = useState(null);
+  
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
 
   const showToast = (message, type = 'success') => {
     setToast({ visible: true, message, type });
@@ -48,47 +55,28 @@ const HouseMembersScreen = ({ route, navigation }) => {
     
     fetchKPIData();
     fetchMembers();
+    fetchHouseDetail();
   }, [houseId]);
 
-  // Odaklanınca sessiz, hızlı yenileme (donma hissini azaltmak için loading spinner yok)
+  const fetchHouseDetail = async () => {
+    try {
+      const res = await houseApi.getById(houseId);
+      const data = res?.data?.data || res?.data;
+      if (data?.creatorUserId) {
+        setCreatorUserId(data.creatorUserId);
+      }
+    } catch (err) {
+      console.error('Ev detayı yüklenemedi:', err);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchKPIData();
-      // üyeleri sessiz yenile (loading bayrağını değiştirme)
-      (async () => {
-        try {
-          const prev = friends;
-          const membersResponse = await houseApi.getMembers(houseId);
-          if (membersResponse.data && Array.isArray(membersResponse.data)) {
-            const members = membersResponse.data;
-            const membersWithDebts = await Promise.all(
-              members.map(async (member) => {
-                try {
-                  const userId = member.userId || member.id;
-                  const debtResponse = await houseApi.getUserDebts(userId, houseId);
-                  const debtData = debtResponse.data;
-                  const netBalance = debtData.netBalance || 0;
-                  const pairwise = debtData.pairwise || [];
-                  let debtStatus = 'Nötr';
-                  if (netBalance > 0) debtStatus = 'Alacaklı';
-                  else if (netBalance < 0) debtStatus = 'Borçlu';
-                  return { id: userId, fullName: member.name || member.fullName || 'İsimsiz Kullanıcı', email: member.email, debtStatus, balance: netBalance, pairwise };
-                } catch {
-                  return { id: member.userId || member.id, fullName: member.name || member.fullName || 'İsimsiz Kullanıcı', email: member.email, debtStatus: 'Nötr', balance: 0, pairwise: [] };
-                }
-              })
-            );
-            // yalnız içerik farklıysa setState yap (gereksiz yeniden çizim/yüklenme hissini azaltır)
-            const prevKey = JSON.stringify(prev);
-            const nextKey = JSON.stringify(membersWithDebts);
-            if (prevKey !== nextKey) setFriends(membersWithDebts);
-          }
-        } catch {}
-      })();
+      fetchMembers();
     });
-
     return unsubscribe;
-  }, [navigation, houseId, friends]);
+  }, [navigation, houseId]);
 
   const fetchKPIData = async () => {
     try {
@@ -106,12 +94,7 @@ const HouseMembersScreen = ({ route, navigation }) => {
       const monthlyBills = expenses.filter(expense => {
         const expenseDate = new Date(expense.kayitTarihi || expense.postDate || expense.date || expense.createdDate);
         const isChild = expense.parentExpenseId || expense.ParentExpenseId;
-        const hasPlanSignals = expense.installmentCount > 1 || expense.dueDay || expense.planStartMonth;
-        
-        return isChild && 
-               expenseDate >= monthStart && 
-               expenseDate < monthEnd && 
-               expenseDate <= now;
+        return isChild && expenseDate >= monthStart && expenseDate < monthEnd && expenseDate <= now;
       });
       
       const billsTotal = monthlyBills.reduce((sum, bill) => sum + (Number(bill.tutar) || Number(bill.amount) || 0), 0);
@@ -127,113 +110,94 @@ const HouseMembersScreen = ({ route, navigation }) => {
           setNetBalance(Number(debtData.netDurum) || 0);
         }
       }
-      
     } catch (error) {
       console.error('KPI verileri yüklenirken hata:', error);
     }
   };
 
   const fetchMembers = async () => {
-    setLoading(true);
     try {
       const membersResponse = await houseApi.getMembers(houseId);
-      
       if (membersResponse.data && Array.isArray(membersResponse.data)) {
         const members = membersResponse.data;
-        
         const membersWithDebts = await Promise.all(
           members.map(async (member) => {
             try {
               const userId = member.userId || member.id;
               const debtResponse = await houseApi.getUserDebts(userId, houseId);
-              
               const debtData = debtResponse.data;
               const netBalance = debtData.netBalance || 0;
-              const pairwise = debtData.pairwise || [];
-              
-              let debtStatus = 'Nötr';
-              if (netBalance > 0) {
-                debtStatus = 'Alacaklı';
-              } else if (netBalance < 0) {
-                debtStatus = 'Borçlu';
-              }
-              
               return {
                 id: userId,
                 fullName: member.name || member.fullName || 'İsimsiz Kullanıcı',
                 email: member.email,
-                debtStatus: debtStatus,
-                balance: netBalance,
-                pairwise: pairwise
+                balance: netBalance
               };
-            } catch (error) {
-              console.error(`${member.name} için borç/alacak bilgisi alınamadı:`, error);
+            } catch {
               return {
                 id: member.userId || member.id,
                 fullName: member.name || member.fullName || 'İsimsiz Kullanıcı',
                 email: member.email,
-                debtStatus: 'Nötr',
-                balance: 0,
-                pairwise: []
+                balance: 0
               };
             }
           })
         );
-        
         setFriends(membersWithDebts);
-      } else {
-        setFriends([]);
       }
     } catch (error) {
-      console.error('API Hatası:', error);
-      setFriends([]);
+      console.error('Üyeler yüklenirken hata:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusText = (balance) => {
-    if (balance > 0) {
-      return `Alacağı: ${balance.toFixed(0)} ₺`;
-    } else if (balance < 0) {
-      return `Borcu: ${Math.abs(balance).toFixed(0)} ₺`;
-    } else {
-      return '';
-    }
+  const handleRemoveMember = (memberId, memberName) => {
+    const isRemovingSelf = user?.id === memberId;
+    const title = isRemovingSelf ? 'Evden Ayrıl' : 'Üyeyi Çıkar';
+    const message = isRemovingSelf 
+      ? 'Bu ev grubundan ayrılmak istediğinizden emin misiniz?' 
+      : `${memberName} isimli üyeyi evden çıkarmak istediğinizden emin misiniz?`;
+
+    Alert.alert(title, message, [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: isRemovingSelf ? 'Ayrıl' : 'Çıkar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await houseApi.removeMember(houseId, memberId, user?.id);
+            showToast(isRemovingSelf ? 'Evden ayrıldınız' : 'Üye çıkarıldı', 'success');
+            if (isRemovingSelf) {
+              navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+            } else {
+              fetchMembers();
+              fetchKPIData();
+            }
+          } catch (error) {
+            showToast(error?.response?.data?.message || 'İşlem başarısız', 'error');
+          }
+        }
+      }
+    ]);
   };
 
-  const getStatusColor = (balance) => {
-    if (balance > 0) return theme.colors.success?.[600];
-    if (balance < 0) return theme.colors.error?.[600];
-    return theme.colors.neutral?.[600];
-  };
-
-  const handleCategoryPress = (utilityType, categoryName) => {
-    navigation.navigate('FaturaListesi', {
-      houseId: houseId,
-      houseName: houseName,
-      utilityType: utilityType,
-      categoryName: categoryName
-    });
-  };
-
-  const handleAddExpense = () => {
-    navigation.navigate('HarcamaEkle', {
-      houseId: houseId,
-      houseName: houseName
-    });
-  };
-
-  const handleMemberPress = (member) => {
-    if (user && user.id === member.id) {
-      showToast('Kendi hesabınızı görüntüleyemezsiniz', 'info');
+  const handleSendInvitation = async () => {
+    if (!inviteEmail.trim()) {
+      showToast('Lütfen e-posta adresi girin', 'error');
       return;
     }
-    navigation.navigate('AlacakBorcIcmi', { 
-      houseId, 
-      userId: member.id,
-      userName: member.fullName
-    });
+    try {
+      setInviting(true);
+      await houseApi.sendInvitation(houseId, inviteEmail.trim());
+      showToast('Davet başarıyla gönderildi', 'success');
+      setInviteModalVisible(false);
+      setInviteEmail('');
+    } catch (error) {
+      showToast(error?.response?.data?.message || 'Davet gönderilemedi', 'error');
+    } finally {
+      setInviting(false);
+    }
   };
 
   if (loading) {
@@ -241,7 +205,7 @@ const HouseMembersScreen = ({ route, navigation }) => {
       <View style={[CommonStyles.container, { backgroundColor: theme.colors.background }]}>
         <View style={CommonStyles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary?.[500]} />
-          <Text style={[CommonStyles.loadingText, { color: theme.colors.text.secondary }]}>Ev arkadaşları yükleniyor...</Text>
+          <Text style={[CommonStyles.loadingText, { color: theme.colors.text.secondary }]}>Yükleniyor...</Text>
         </View>
       </View>
     );
@@ -249,238 +213,148 @@ const HouseMembersScreen = ({ route, navigation }) => {
 
   return (
     <View style={[CommonStyles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView style={[CommonStyles.content, { backgroundColor: theme.colors.background }]} ref={listRef} onScroll={handleScroll} scrollEventThrottle={16}>
+      <ScrollView style={CommonStyles.content} ref={listRef} onScroll={handleScroll} scrollEventThrottle={16}>
         <View style={CommonStyles.header}>
           <Text style={[CommonStyles.title, { color: theme.colors.text.primary }]}>{houseName || 'Ev'}</Text>
         </View>
 
-        {/* KPI Özet Bloğu */}
-        <View style={styles.kpiContainer}>
-          <View style={styles.kpiRow}>
-            <View style={[styles.kpiCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.neutral?.[200] }]}>
-              <Text style={[styles.kpiLabel, { color: theme.colors.text.secondary }]}>Üye Sayısı</Text>
-              <Text style={[styles.kpiValue, { color: theme.colors.text.primary }]}>{memberCount}</Text>
-            </View>
-            <View style={[styles.kpiCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.neutral?.[200] }]}>
-              <Text style={[styles.kpiLabel, { color: theme.colors.text.secondary }]}>Bu Ay Faturalar</Text>
-              <Text style={[styles.kpiValue, { color: theme.colors.info?.[600] || theme.colors.text.primary }]}>{monthlyBillsTotal.toFixed(0)} ₺</Text>
-            </View>
-            <View style={[styles.kpiCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.neutral?.[200] }]}>
-              <Text style={[styles.kpiLabel, { color: theme.colors.text.secondary }]}>Net Denge</Text>
-              <Text style={[styles.kpiValue, { color: netBalance >= 0 ? theme.colors.success?.[600] : theme.colors.error?.[600] }]}>
-                {netBalance.toFixed(0)} ₺
-              </Text>
-            </View>
+        {/* KPI Özeti */}
+        <View style={styles.kpiRow}>
+          <View style={[styles.kpiCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={styles.kpiLabel}>Üye</Text>
+            <Text style={styles.kpiValue}>{memberCount}</Text>
+          </View>
+          <View style={[styles.kpiCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={styles.kpiLabel}>Bu Ay</Text>
+            <Text style={styles.kpiValue}>{monthlyBillsTotal.toFixed(0)} ₺</Text>
+          </View>
+          <View style={[styles.kpiCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={styles.kpiLabel}>Denge</Text>
+            <Text style={[styles.kpiValue, { color: netBalance >= 0 ? theme.colors.success?.[600] : theme.colors.error?.[600] }]}>
+              {netBalance.toFixed(0)} ₺
+            </Text>
           </View>
         </View>
 
-        {/* Ev Arkadaşları Listesi */}
-        <View style={[CommonStyles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.neutral?.[200] }]}>
-          <Text style={[styles.sectionTitle, { marginBottom: 10, color: theme.colors.text.primary }]}>👥 Ev Arkadaşları</Text>
-          <View style={CommonStyles.listContainer}>
-            {friends.map((item) => {
-              const isCurrentUser = user && user.id === item.id;
-              const statusColor = getStatusColor(item.balance);
-              const statusText = getStatusText(item.balance);
-
-              return (
-                <TouchableOpacity
-                  key={item.id.toString()}
-                  style={[
-                    CommonStyles.listItem,
-                    isCurrentUser && [styles.currentUserCard, { borderColor: theme.colors.primary?.[300] }]
-                  ]}
-                  onPress={() => handleMemberPress(item)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.avatarContainer, { width: 36, height: 36, borderRadius: 18, marginRight: 10, backgroundColor: theme.colors.primary?.[500] }]}>
-                    <Text style={[styles.avatarText, { color: theme.colors.text.onPrimary }]}>
-                      {item.fullName ? item.fullName.charAt(0).toUpperCase() : '?'}
-                    </Text>
-                  </View>
-                  <View style={CommonStyles.listItemContent}>
-                    <Text style={[CommonStyles.listItemTitle, { fontSize: 14, color: theme.colors.text.primary }]}>
-                      {item.fullName} {isCurrentUser && '(Siz)'}
-                    </Text>
-                    <Text style={[CommonStyles.listItemSubtitle, { fontSize: 11, color: theme.colors.text.secondary }]} numberOfLines={1}>{item.email || 'E-posta yok'}</Text>
-                  </View>
-                  {statusText ? (
-                    <View style={styles.balanceInfo}>
-                      <Text style={[styles.balanceText, { color: statusColor, fontSize: 12 }]}>
-                        {statusText}
-                      </Text>
-                    </View>
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Ev Detayı Grid */}
-        <View style={[CommonStyles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.neutral?.[200] }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>🏠 Ev Detayı</Text>
-          <View style={[styles.categoriesGrid, { gap: 10 }]}>
+        {/* Üye Listesi */}
+        <View style={[CommonStyles.card, { marginTop: 20 }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>👥 Ev Arkadaşları</Text>
             <TouchableOpacity 
-              style={[CommonStyles.menuButton, { flex: 1, minWidth: '48%' }]}
-              onPress={() => navigation.navigate('BillsOverviewScreen', { houseId, houseName })}
-              activeOpacity={0.8}
+              style={styles.addBtn}
+              onPress={() => setInviteModalVisible(true)}
             >
-              <View style={[CommonStyles.buttonContent, { backgroundColor: theme.colors.pastel?.blue?.bg || theme.colors.surface, borderWidth: 1, borderColor: 'transparent', padding: 12 }]}>
-                <Text style={CommonStyles.buttonIcon}>📄</Text>
-                <Text style={[CommonStyles.buttonText, { fontSize: 14, color: theme.colors.pastel?.blue?.fg || theme.colors.text.primary }]}>Faturalar (Planlı)</Text>
-                <Text style={[CommonStyles.buttonSubtext, { fontSize: 11, color: theme.colors.pastel?.blue?.fg || theme.colors.text.secondary, opacity: 0.85 }]}>Bu ay ödenecekler</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[CommonStyles.menuButton, { flex: 1, minWidth: '48%' }]}
-              onPress={() => navigation.navigate('TumHarcamalar', { houseId, houseName })}
-              activeOpacity={0.8}
-            >
-              <View style={[CommonStyles.buttonContent, { backgroundColor: theme.colors.pastel?.green?.bg || theme.colors.surface, borderWidth: 1, borderColor: 'transparent', padding: 12 }]}>
-                <Text style={CommonStyles.buttonIcon}>📋</Text>
-                <Text style={[CommonStyles.buttonText, { fontSize: 14, color: theme.colors.pastel?.green?.fg || theme.colors.text.primary }]}>Harcamalar (Serbest)</Text>
-                <Text style={[CommonStyles.buttonSubtext, { fontSize: 11, color: theme.colors.pastel?.green?.fg || theme.colors.text.secondary, opacity: 0.85 }]}>Tam hareket dökümü</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[CommonStyles.menuButton, { flex: 1, minWidth: '48%' }]}
-              onPress={() => navigation.navigate('BekleyenOdemeler', { houseId, houseName })}
-              activeOpacity={0.8}
-            >
-              <View style={[CommonStyles.buttonContent, { backgroundColor: theme.colors.pastel?.orange?.bg || theme.colors.surface, borderWidth: 1, borderColor: 'transparent', padding: 12 }]}>
-                <Text style={CommonStyles.buttonIcon}>⏳</Text>
-                <Text style={[CommonStyles.buttonText, { fontSize: 14, color: theme.colors.pastel?.orange?.fg || theme.colors.text.primary }]}>Bekleyen İşlemler</Text>
-                <Text style={[CommonStyles.buttonSubtext, { fontSize: 11, color: theme.colors.pastel?.orange?.fg || theme.colors.text.secondary, opacity: 0.85 }]}>Onay bekleyenler</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[CommonStyles.menuButton, { flex: 1, minWidth: '48%' }]}
-              onPress={() => navigation.navigate('DebtSummaryScreen', { houseId, houseName })}
-              activeOpacity={0.8}
-            >
-              <View style={[CommonStyles.buttonContent, { backgroundColor: theme.colors.pastel?.pink?.bg || theme.colors.surface, borderWidth: 1, borderColor: 'transparent', padding: 12 }]}>
-                <Text style={CommonStyles.buttonIcon}>💰</Text>
-                <Text style={[CommonStyles.buttonText, { fontSize: 14, color: theme.colors.pastel?.pink?.fg || theme.colors.text.primary }]}>Borç–Alacak</Text>
-                <Text style={[CommonStyles.buttonSubtext, { fontSize: 11, color: theme.colors.pastel?.pink?.fg || theme.colors.text.secondary, opacity: 0.85 }]}>Net bakiyeler</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[CommonStyles.menuButton, { flex: 1, minWidth: '48%' }]}
-              onPress={() => navigation.navigate('HarcamaOzeti', { houseId, houseName })}
-              activeOpacity={0.8}
-            >
-              <View style={[CommonStyles.buttonContent, { backgroundColor: theme.colors.pastel?.purple?.bg || theme.colors.surface, borderWidth: 1, borderColor: 'transparent', padding: 12 }]}>
-                <Text style={CommonStyles.buttonIcon}>📊</Text>
-                <Text style={[CommonStyles.buttonText, { fontSize: 14, color: theme.colors.pastel?.purple?.fg || theme.colors.text.primary }]}>Analitik</Text>
-                <Text style={[CommonStyles.buttonSubtext, { fontSize: 11, color: theme.colors.pastel?.purple?.fg || theme.colors.text.secondary, opacity: 0.85 }]}>Grafikler & özetler</Text>
-              </View>
+              <Text style={styles.addBtnText}>➕ Davet</Text>
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Hızlı Ekleme Butonları */}
-        <View style={styles.footerButtons}>
-          <TouchableOpacity 
-            style={CommonStyles.menuButton}
-            onPress={() => navigation.navigate('UtilityBillCreate', { houseId, houseName })}
-            activeOpacity={0.8}
-          >
-            <View style={[CommonStyles.buttonContent, { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.neutral?.[200] }]}> 
-              <Text style={[CommonStyles.buttonIcon, { color: theme.colors.text.primary }]}>➕</Text>
-              <Text style={[CommonStyles.buttonText, { color: theme.colors.text.primary }]}>Düzenli Gider Ekle</Text>
-              <Text style={[CommonStyles.buttonSubtext, { color: theme.colors.text.secondary }]}>Kira/abonelik ekle</Text>
-            </View>
-          </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={CommonStyles.menuButton}
-            onPress={handleAddExpense}
-            activeOpacity={0.8}
-          >
-            <View style={[CommonStyles.buttonContent, { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.neutral?.[200] }]}> 
-              <Text style={[CommonStyles.buttonIcon, { color: theme.colors.text.primary }]}>🧾</Text>
-              <Text style={[CommonStyles.buttonText, { color: theme.colors.text.primary }]}>Harcama Ekle</Text>
-              <Text style={[CommonStyles.buttonSubtext, { color: theme.colors.text.secondary }]}>Market/Yemek vb.</Text>
-            </View>
-          </TouchableOpacity>
+          {friends.map((item) => {
+            const isCurrentUser = user && user.id === item.id;
+            const balanceColor = item.balance > 0 ? theme.colors.success?.[600] : (item.balance < 0 ? theme.colors.error?.[600] : theme.colors.text.secondary);
+            
+            return (
+              <View key={item.id} style={styles.memberItem}>
+                <View style={[styles.avatar, { backgroundColor: theme.colors.primary?.[500] }]}>
+                  <Text style={styles.avatarText}>{item.fullName.charAt(0).toUpperCase()}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.memberName}>{item.fullName} {isCurrentUser && '(Siz)'}</Text>
+                  <Text style={styles.memberEmail}>{item.email}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[styles.memberBalance, { color: balanceColor }]}>
+                    {item.balance !== 0 ? `${item.balance.toFixed(0)} ₺` : 'Nötr'}
+                  </Text>
+                  {user?.id === creatorUserId && !isCurrentUser && (
+                    <TouchableOpacity onPress={() => handleRemoveMember(item.id, item.fullName)} style={{ marginTop: 4 }}>
+                      <Text style={{ fontSize: 16 }}>🗑️</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            );
+          })}
         </View>
 
-        <Toast
-          visible={toast.visible}
-          message={toast.message}
-          type={toast.type}
-          onHide={hideToast}
-        />
+        {/* Menü Grid */}
+        <View style={{ marginTop: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          <MenuBtn icon="📄" title="Faturalar" sub="Bu ay" onPress={() => navigation.navigate('BillsOverviewScreen', { houseId, houseName })} color={theme.colors.info?.[50]} />
+          <MenuBtn icon="📋" title="Harcamalar" sub="Tümü" onPress={() => navigation.navigate('TumHarcamalar', { houseId, houseName })} color={theme.colors.success?.[50]} />
+          <MenuBtn icon="⏳" title="Bekleyen" sub="Onaylar" onPress={() => navigation.navigate('BekleyenOdemeler', { houseId, houseName })} color={theme.colors.warning?.[50]} />
+          <MenuBtn icon="💰" title="Bakiye" sub="Net durum" onPress={() => navigation.navigate('DebtSummaryScreen', { houseId, houseName })} color={theme.colors.error?.[50]} />
+        </View>
+
+        {/* Ayrıl Butonu */}
+        <TouchableOpacity 
+          style={styles.leaveBtn}
+          onPress={() => handleRemoveMember(user?.id, 'Kendim')}
+        >
+          <Text style={styles.leaveBtnText}>🚪 Evden Ayrıl</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
+
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
+
+      <Modal visible={inviteModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+            <Text style={styles.modalTitle}>Davet Et</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="E-posta adresi"
+              value={inviteEmail}
+              onChangeText={setInviteEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={[styles.mBtn, { backgroundColor: theme.colors.neutral?.[200] }]} onPress={() => setInviteModalVisible(false)}>
+                <Text>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.mBtn, { backgroundColor: theme.colors.primary?.[600] }]} onPress={handleSendInvitation} disabled={inviting}>
+                <Text style={{ color: '#fff' }}>Gönder</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
 
+const MenuBtn = ({ icon, title, sub, onPress, color }) => (
+  <TouchableOpacity style={[styles.menuBtn, { backgroundColor: color }]} onPress={onPress}>
+    <Text style={{ fontSize: 24, marginBottom: 4 }}>{icon}</Text>
+    <Text style={{ fontWeight: 'bold' }}>{title}</Text>
+    <Text style={{ fontSize: 10, opacity: 0.6 }}>{sub}</Text>
+  </TouchableOpacity>
+);
+
 const styles = StyleSheet.create({
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  kpiContainer: {
-    marginBottom: 20,
-  },
-  kpiRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  kpiCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  kpiLabel: {
-    fontSize: 12,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  kpiValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  currentUserCard: {
-    borderWidth: 3,
-  },
-  avatarContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  balanceInfo: {
-    alignItems: 'flex-end',
-  },
-  balanceText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  footerButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 20,
-  },
+  kpiRow: { flexDirection: 'row', gap: 10 },
+  kpiCard: { flex: 1, padding: 12, borderRadius: 12, alignItems: 'center', borderWeight: 1, borderColor: '#eee' },
+  kpiLabel: { fontSize: 12, opacity: 0.6 },
+  kpiValue: { fontSize: 16, fontWeight: 'bold' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold' },
+  addBtn: { backgroundColor: '#007AFF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  addBtnText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  memberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  avatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  avatarText: { color: '#fff', fontWeight: 'bold' },
+  memberName: { fontWeight: 'bold' },
+  memberEmail: { fontSize: 12, opacity: 0.5 },
+  memberBalance: { fontWeight: 'bold' },
+  menuBtn: { flex: 1, minWidth: '45%', padding: 15, borderRadius: 15, alignItems: 'center' },
+  leaveBtn: { marginTop: 30, padding: 15, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ff3b30', alignItems: 'center' },
+  leaveBtnText: { color: '#ff3b30', fontWeight: 'bold' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  modalContent: { padding: 20, borderRadius: 20 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+  modalInput: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 12, marginBottom: 20 },
+  mBtn: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center' }
 });
 
 export default HouseMembersScreen;

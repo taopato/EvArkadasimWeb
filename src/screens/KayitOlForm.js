@@ -170,6 +170,8 @@ const RegisterScreen = ({ navigation }) => {
             onChangeText={setConfirm}
             secureTextEntry
             placeholderTextColor={theme.colors.text.disabled}
+            onSubmitEditing={handleSignup}
+            blurOnSubmit={false}
           />
 
           <Text style={[styles.info, { color: theme.colors.text.secondary }]}>

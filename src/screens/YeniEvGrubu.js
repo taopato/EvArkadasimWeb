@@ -9,7 +9,7 @@ import { houseApi } from '../services/api';
 const NewGroupScreen = ({ navigation }) => {
   const [houseName, setHouseName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, setDefaultHouseId } = useAuth();
   const CommonStyles = useCommonStyles();
   const { theme } = useTheme();
   const ColorThemes = makeColorThemes(theme);
@@ -21,10 +21,18 @@ const NewGroupScreen = ({ navigation }) => {
     }
     setLoading(true);
     try {
-      await houseApi.createHouse({ name: houseName.trim(), description: '', createdBy: user?.id });
-      Alert.alert('Başarılı', 'Ev grubu oluşturuldu.', [
-        { text: 'Tamam', onPress: () => navigation.goBack() },
-      ]);
+      const resp = await houseApi.createHouse({ name: houseName.trim(), description: '', creatorUserId: user?.id });
+      const raw = resp?.data || {};
+      const house = raw?.data ?? raw ?? {};
+
+      if (house?.id) {
+        await setDefaultHouseId(house.id, house.name);
+        navigation.replace('EvUyeleri', { houseId: house.id, houseName: house.name });
+      } else {
+        Alert.alert('Başarılı', 'Ev grubu oluşturuldu.', [
+          { text: 'Tamam', onPress: () => navigation.goBack() },
+        ]);
+      }
     } catch (e) {
       Alert.alert('Hata', e?.response?.data?.message || e?.message || 'Oluşturulamadı');
     } finally {
@@ -48,6 +56,8 @@ const NewGroupScreen = ({ navigation }) => {
             value={houseName}
             onChangeText={setHouseName}
             placeholderTextColor={theme.colors.text.secondary}
+            onSubmitEditing={handleCreateGroup}
+            blurOnSubmit={false}
           />
 
           <TouchableOpacity

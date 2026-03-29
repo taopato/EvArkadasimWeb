@@ -176,11 +176,17 @@ export default function AddExpenseScreen({ navigation, route }) {
 
     try {
       setScanningReceipt(true);
-      const image = {
+      let image = {
         uri: asset.uri,
         name: asset.fileName || asset.uri.split('/').pop() || `receipt-${Date.now()}.jpg`,
         type: asset.mimeType || 'image/jpeg',
       };
+
+      if (Platform.OS === 'web' && typeof asset.uri === 'string' && asset.uri.startsWith('blob:')) {
+        const res = await fetch(asset.uri);
+        const blob = await res.blob();
+        image = new File([blob], image.name, { type: blob.type || 'image/jpeg' });
+      }
 
       const response = await receiptsApi.scan({
         houseId: activeHouseId,
@@ -211,7 +217,7 @@ export default function AddExpenseScreen({ navigation, route }) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      allowsEditing: Platform.OS !== 'web',
       quality: 0.8,
     });
 
@@ -228,7 +234,8 @@ export default function AddExpenseScreen({ navigation, route }) {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: Platform.OS !== 'web',
       quality: 0.8,
     });
 
@@ -237,8 +244,9 @@ export default function AddExpenseScreen({ navigation, route }) {
     }
   };
 
+    const Comp = Platform.OS === 'web' ? View : KeyboardAvoidingView;
   return (
-    <KeyboardAvoidingView
+    <Comp
       style={CommonStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
@@ -285,6 +293,8 @@ export default function AddExpenseScreen({ navigation, route }) {
             keyboardType="numeric"
             value={amount}
             onChangeText={(text) => setAmount(formatThousandsTRInput(text))}
+            onSubmitEditing={save}
+            blurOnSubmit={false}
           />
           <Text style={styles.hint}>Ornek: 1.000</Text>
         </View>
@@ -372,7 +382,7 @@ export default function AddExpenseScreen({ navigation, route }) {
 
         <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
       </ScrollView>
-    </KeyboardAvoidingView>
+    </Comp>
   );
 }
 

@@ -416,6 +416,8 @@ const GirisYap = ({ navigation }) => {
               secureTextEntry
               value={password}
               onChangeText={setPassword}
+              onSubmitEditing={handleLogin}
+              blurOnSubmit={false}
             />
 
             {!!errorMessage && (

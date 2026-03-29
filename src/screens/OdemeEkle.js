@@ -181,7 +181,8 @@ export default function CreatePaymentScreen({ navigation, route }) {
       if (response?.data) {
         showSuccess('Ödeme başarıyla oluşturuldu!');
         // ödeme listelerini/borçları yenile
-        const eventBus = (await import('../shared/events/bus')).default;
+        const busModule = await import('../shared/events/bus');
+        const eventBus = busModule.default || busModule;
         eventBus.emit('payments:updated', { houseId: activeHouseId });
         setTimeout(() => navigation.goBack(), 1200);
       } else {
@@ -205,6 +206,7 @@ export default function CreatePaymentScreen({ navigation, route }) {
     }
     return true;
   };
+
   const requestGalleryPermission = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -218,9 +220,8 @@ export default function CreatePaymentScreen({ navigation, route }) {
     const ok = await requestGalleryPermission();
     if (!ok) return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      // ❗ web’de hata veren MediaType yerine Options kullan
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      allowsEditing: Platform.OS !== 'web',
       quality: 0.8,
     });
     if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -232,7 +233,8 @@ export default function CreatePaymentScreen({ navigation, route }) {
     const ok = await requestCameraPermission();
     if (!ok) return;
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: Platform.OS !== 'web',
       quality: 0.8,
     });
     if (!result.canceled && result.assets && result.assets.length > 0) {
