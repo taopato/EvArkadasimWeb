@@ -81,6 +81,7 @@ const ENV_GOOGLE_WEB_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID a
 const ENV_GOOGLE_IOS_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID as string) || undefined;
 const ENV_GOOGLE_ANDROID_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID as string) || undefined;
 const ENV_GOOGLE_EXPO_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID as string) || undefined;
+const DEFAULT_GOOGLE_WEB_CLIENT_ID = '253722443834-1rium4sbtslb0de4ct9v6k2suetgnpad.apps.googleusercontent.com';
 
 /* ------------------------------------------------------------------
    NGROK TEST OVERRIDE
@@ -118,7 +119,7 @@ export const BASE_URL: string = SELECTED_BASE;
 export const API_BASE_URL: string = `${SELECTED_BASE}/api`;
 
 export const GOOGLE_CLIENT_IDS = {
-  web: EXTRA_GOOGLE_WEB_CLIENT_ID || ENV_GOOGLE_WEB_CLIENT_ID || '',
+  web: EXTRA_GOOGLE_WEB_CLIENT_ID || ENV_GOOGLE_WEB_CLIENT_ID || DEFAULT_GOOGLE_WEB_CLIENT_ID,
   ios: EXTRA_GOOGLE_IOS_CLIENT_ID || ENV_GOOGLE_IOS_CLIENT_ID || '',
   android: EXTRA_GOOGLE_ANDROID_CLIENT_ID || ENV_GOOGLE_ANDROID_CLIENT_ID || '',
   expo: EXTRA_GOOGLE_EXPO_CLIENT_ID || ENV_GOOGLE_EXPO_CLIENT_ID || '',
