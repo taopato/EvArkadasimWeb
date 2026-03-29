@@ -169,7 +169,7 @@ const HouseMembersScreen = ({ route, navigation }) => {
             await houseApi.removeMember(houseId, memberId, user?.id);
             showToast(isRemovingSelf ? 'Evden ayrıldınız' : 'Üye çıkarıldı', 'success');
             if (isRemovingSelf) {
-              navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+              navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
             } else {
               fetchMembers();
               fetchKPIData();

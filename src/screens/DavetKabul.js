@@ -91,7 +91,7 @@ export default function DavetKabul({ navigation, route }) {
       setTimeout(() => {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'MainTabs' }],
+          routes: [{ name: 'Home' }],
         });
       }, 1500);
     } catch (e) {
