@@ -88,7 +88,7 @@ const VerificationScreen = ({ navigation, route }) => {
     if (secondsLeft > 0) return;
     setLoading(true);
     try {
-      await authApi.sendVerificationCode(email);
+      await authApi.sendVerificationCode(email, 'register');
       Alert.alert('Basarili', 'Yeni dogrulama kodu gonderildi.');
       setSecondsLeft(RESEND_COOLDOWN_SECONDS);
     } catch (error) {

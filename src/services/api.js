@@ -148,7 +148,7 @@ export const authApi = {
 
     return { data: { token, user, raw } };
   },
-  sendVerificationCode: (email) => api.post('/Auth/SendVerificationCode', { email }),
+  sendVerificationCode: (email, purpose = 'register') => api.post('/Auth/SendVerificationCode', { email, purpose }),
   verifyCodeAndRegister: (email, code, fullName, password) =>
     api.post('/Auth/VerifyCodeAndRegister', { email, code, fullName, password }).then((res) => {
       const raw = res?.data || {};

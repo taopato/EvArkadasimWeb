@@ -42,7 +42,7 @@ const RegisterScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const normalizedEmail = normalizeEmail(email);
-      const res = await authApi.sendVerificationCode(normalizedEmail);
+      const res = await authApi.sendVerificationCode(normalizedEmail, 'register');
       if (res?.status === 200) {
         navigation.navigate('VerificationScreen', {
           email: normalizedEmail,
@@ -54,7 +54,22 @@ const RegisterScreen = ({ navigation }) => {
       }
     } catch (e) {
       console.error('Kayit hatasi:', e);
-      Alert.alert('Hata', e?.response?.data?.message || e.message || 'Islem basarisiz.');
+      const message = e?.response?.data?.message || e.message || 'Islem basarisiz.';
+      if (String(message).toLowerCase().includes('zaten kayıtlı') || String(message).toLowerCase().includes('zaten kayitli')) {
+        Alert.alert(
+          'Hata',
+          message,
+          [
+            { text: 'Vazgec', style: 'cancel' },
+            {
+              text: 'Sifremi Unuttum',
+              onPress: () => navigation.navigate('ForgotPasswordScreen', { email: normalizedEmail }),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Hata', message);
+      }
     } finally {
       setLoading(false);
     }

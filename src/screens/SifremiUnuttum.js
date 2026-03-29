@@ -35,7 +35,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      await authApi.sendVerificationCode(normalizedEmail);
+      await authApi.sendVerificationCode(normalizedEmail, 'reset');
       navigation.navigate('ResetPasswordScreen', { email: normalizedEmail });
     } catch (error) {
       Alert.alert('Hata', error.response?.data?.message || error.message);
