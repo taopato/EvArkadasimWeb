@@ -27,6 +27,15 @@ WebBrowser.maybeCompleteAuthSession();
 
 const LOGO = require('../assets/icon.png');
 
+const extractIdTokenFromUrlHash = () => {
+  if (typeof window === 'undefined') return null;
+  const { pathname, hash } = window.location;
+  if (pathname !== '/oauthredirect' || !hash) return null;
+
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  return params.get('id_token');
+};
+
 const GoogleLoginButton = ({
   isExpoGo,
   projectNameForProxy,
@@ -37,6 +46,23 @@ const GoogleLoginButton = ({
 }) => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const isWeb = Platform.OS === 'web';
+
+  const finishGoogleLogin = async (idToken) => {
+    const apiResponse = await authApi.googleLogin(idToken);
+    const payload = apiResponse?.data || {};
+    const token = payload?.token;
+    const user = payload?.user;
+
+    if (!token || !user) {
+      throw new Error('Google giris yaniti eksik.');
+    }
+
+    await login(user, token);
+
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', `${window.location.origin}/`);
+    }
+  };
 
   const googleRedirectUri = useMemo(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -102,16 +128,7 @@ const GoogleLoginButton = ({
       }
 
       try {
-        const apiResponse = await authApi.googleLogin(idToken);
-        const payload = apiResponse?.data || {};
-        const token = payload?.token;
-        const user = payload?.user;
-
-        if (!token || !user) {
-          throw new Error('Google giris yaniti eksik.');
-        }
-
-        await login(user, token);
+        await finishGoogleLogin(idToken);
       } catch (error) {
         Alert.alert(
           'Google girisi basarisiz',
@@ -124,6 +141,39 @@ const GoogleLoginButton = ({
 
     runGoogleLogin();
   }, [response, login]);
+
+  useEffect(() => {
+    if (!isWeb) return;
+
+    const idToken = extractIdTokenFromUrlHash();
+    if (!idToken) return;
+
+    let cancelled = false;
+
+    const runGoogleLoginFromHash = async () => {
+      try {
+        setGoogleLoading(true);
+        await finishGoogleLogin(idToken);
+      } catch (error) {
+        if (!cancelled) {
+          Alert.alert(
+            'Google girisi basarisiz',
+            error?.response?.data?.message || error?.message || 'Sunucuya giris yapilamadi.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setGoogleLoading(false);
+        }
+      }
+    };
+
+    runGoogleLoginFromHash();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isWeb, login]);
 
   return (
     <>
