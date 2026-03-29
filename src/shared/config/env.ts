@@ -3,6 +3,12 @@ import { Platform } from 'react-native';
 // @ts-ignore - expo-constants runtime import for reading extra
 import Constants from 'expo-constants';
 
+const clean = (value?: string): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
+
 /**
  * Geliştirme senaryoları:
  * - iOS Simülatör: localhost
@@ -68,20 +74,20 @@ const getWebRuntimeBase = (): string | undefined => {
 };
 
 // Production/EAS override imkanları
-const EXTRA_API_URL = (Constants?.expoConfig?.extra as any)?.EXPO_PUBLIC_API_URL as string | undefined;
-const ENV_API_URL = (process.env.EXPO_PUBLIC_API_URL as string) || undefined;
+const EXTRA_API_URL = clean((Constants?.expoConfig?.extra as any)?.EXPO_PUBLIC_API_URL as string | undefined);
+const ENV_API_URL = clean((process.env.EXPO_PUBLIC_API_URL as string) || undefined);
 const WEB_RUNTIME_API_URL = getWebRuntimeBase();
 
-const EXTRA_GOOGLE_WEB_CLIENT_ID = (Constants?.expoConfig?.extra as any)?.GOOGLE_WEB_CLIENT_ID as string | undefined;
-const EXTRA_GOOGLE_IOS_CLIENT_ID = (Constants?.expoConfig?.extra as any)?.GOOGLE_IOS_CLIENT_ID as string | undefined;
-const EXTRA_GOOGLE_ANDROID_CLIENT_ID = (Constants?.expoConfig?.extra as any)?.GOOGLE_ANDROID_CLIENT_ID as string | undefined;
-const EXTRA_GOOGLE_EXPO_CLIENT_ID = (Constants?.expoConfig?.extra as any)?.GOOGLE_EXPO_CLIENT_ID as string | undefined;
+const EXTRA_GOOGLE_WEB_CLIENT_ID = clean((Constants?.expoConfig?.extra as any)?.GOOGLE_WEB_CLIENT_ID as string | undefined);
+const EXTRA_GOOGLE_IOS_CLIENT_ID = clean((Constants?.expoConfig?.extra as any)?.GOOGLE_IOS_CLIENT_ID as string | undefined);
+const EXTRA_GOOGLE_ANDROID_CLIENT_ID = clean((Constants?.expoConfig?.extra as any)?.GOOGLE_ANDROID_CLIENT_ID as string | undefined);
+const EXTRA_GOOGLE_EXPO_CLIENT_ID = clean((Constants?.expoConfig?.extra as any)?.GOOGLE_EXPO_CLIENT_ID as string | undefined);
 
-const ENV_GOOGLE_WEB_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID as string) || undefined;
-const ENV_GOOGLE_IOS_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID as string) || undefined;
-const ENV_GOOGLE_ANDROID_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID as string) || undefined;
-const ENV_GOOGLE_EXPO_CLIENT_ID = (process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID as string) || undefined;
-const DEFAULT_GOOGLE_WEB_CLIENT_ID = '253722443834-1rium4sbtslb0de4ct9v6k2suetgnpad.apps.googleusercontent.com';
+const ENV_GOOGLE_WEB_CLIENT_ID = clean((process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID as string) || undefined);
+const ENV_GOOGLE_IOS_CLIENT_ID = clean((process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID as string) || undefined);
+const ENV_GOOGLE_ANDROID_CLIENT_ID = clean((process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID as string) || undefined);
+const ENV_GOOGLE_EXPO_CLIENT_ID = clean((process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID as string) || undefined);
+const DEFAULT_GOOGLE_WEB_CLIENT_ID = clean('253722443834-1rium4sbtslb0de4ct9v6k2suetgnpad.apps.googleusercontent.com');
 
 /* ------------------------------------------------------------------
    NGROK TEST OVERRIDE
