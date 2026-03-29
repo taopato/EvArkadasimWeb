@@ -34,6 +34,7 @@ const GoogleLoginButton = ({
   googleClientConfig,
   theme,
   login,
+  navigation,
 }) => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const isWeb = Platform.OS === 'web';
@@ -112,6 +113,10 @@ const GoogleLoginButton = ({
         }
 
         await login(user, token);
+        navigation?.reset?.({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
       } catch (error) {
         Alert.alert(
           'Google girisi basarisiz',
@@ -396,12 +401,13 @@ const GirisYap = ({ navigation }) => {
               <GoogleLoginButton
                 isExpoGo={isExpoGo}
                 projectNameForProxy={projectNameForProxy}
-                googleConfigured={googleConfigured}
-                googleClientConfig={googleClientConfig}
-                theme={theme}
-                login={login}
-              />
-            )}
+              googleConfigured={googleConfigured}
+              googleClientConfig={googleClientConfig}
+              theme={theme}
+              login={login}
+              navigation={navigation}
+            />
+          )}
 
             <TouchableOpacity onPress={() => navigation.navigate('ForgotPasswordScreen')}>
               <Text style={[styles.link, { color: theme.colors.text.secondary }]}>

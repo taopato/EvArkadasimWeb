@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, LogBox, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
@@ -91,12 +91,22 @@ function ThemedNavigator() {
   const { user, loading } = useAuth();
   const colors = theme.colors;
 
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || !user) return;
+
+    const { pathname, origin } = window.location;
+    if (pathname === '/oauthredirect') {
+      window.history.replaceState({}, '', `${origin}/`);
+    }
+  }, [user]);
+
   if (loading) {
     return <LoadingScreen />;
   }
 
   return (
     <NavigationContainer
+      key={user ? 'auth-nav' : 'guest-nav'}
       theme={{
         dark: theme.mode !== 'light',
         colors: {
@@ -110,6 +120,7 @@ function ThemedNavigator() {
       }}
     >
       <Stack.Navigator
+        key={user ? 'auth-stack' : 'guest-stack'}
         initialRouteName={user ? 'Home' : 'Login'}
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
