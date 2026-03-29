@@ -55,10 +55,6 @@ const VerificationScreen = ({ navigation, route }) => {
 
       if (payload?.token && payload?.user) {
         await login(payload.user, payload.token);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        });
         Alert.alert('Basarili', 'Hesabiniz olusturuldu!', [{ text: 'Tamam' }]);
       } else {
         Alert.alert(

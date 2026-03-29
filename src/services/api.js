@@ -130,7 +130,21 @@ export const authApi = {
     const authHeader = res?.headers?.authorization || res?.headers?.Authorization;
     const tokenFromHeader = typeof authHeader === 'string' ? authHeader.replace(/^[Bb]earer\s+/,'') : undefined;
     const token = tokenFromBody || tokenFromHeader;
-    const user = pickFirst(data, ['user', 'userDto', 'account', 'profile']) || pickFirst(raw, ['user', 'userDto', 'account', 'profile']);
+    let user = pickFirst(data, ['user', 'userDto', 'account', 'profile']) || pickFirst(raw, ['user', 'userDto', 'account', 'profile']);
+
+    if (!user) {
+      const userId = pickFirst(data, ['userId', 'id']) || pickFirst(raw, ['userId', 'id']);
+      const fullName = pickFirst(data, ['fullName', 'name']) || pickFirst(raw, ['fullName', 'name']);
+      const email = pickFirst(data, ['email', 'mail']) || pickFirst(raw, ['email', 'mail']);
+
+      if (userId || fullName || email) {
+        user = {
+          id: userId ?? 0,
+          fullName: fullName ?? email ?? '',
+          email: email ?? '',
+        };
+      }
+    }
 
     return { data: { token, user, raw } };
   },
