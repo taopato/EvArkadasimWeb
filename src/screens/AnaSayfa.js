@@ -16,7 +16,7 @@ import {
 } from '../utils/expenseHelpers';
 
 const HomeScreen = ({ navigation }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, setDefaultHouseId } = useAuth();
   const { theme } = useTheme();
   const [billModalVisible, setBillModalVisible] = useState(false);
   const [weeklyTotal, setWeeklyTotal] = useState(0);
@@ -29,6 +29,26 @@ const HomeScreen = ({ navigation }) => {
   const activeHouseId = user?.defaultHouseId ? Number(user.defaultHouseId) : null;
   const activeHouseName = user?.defaultHouseName || 'Aktif Ev';
   const hasDefaultHouse = Boolean(activeHouseId);
+
+  useEffect(() => {
+    const ensureDefaultHouse = async () => {
+      if (!user?.id || user?.defaultHouseId) {
+        return;
+      }
+
+      try {
+        const response = await houseApi.getUserHouses(Number(user.id));
+        const houses = Array.isArray(response?.data) ? response.data : [];
+        if (houses.length > 0) {
+          await setDefaultHouseId(houses[0].id, houses[0].name);
+        }
+      } catch {
+        // Ana sayfayi bloklamamak icin burada sessiz kaliyoruz.
+      }
+    };
+
+    ensureDefaultHouse();
+  }, [user?.id, user?.defaultHouseId, setDefaultHouseId]);
 
   const pastelKeys = ['blue', 'green', 'purple', 'orange', 'pink'];
   const formatCurrency = (amount) =>

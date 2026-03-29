@@ -29,11 +29,11 @@
     },
     "scheme": "evarkadasim",
     "extra": {
-      "EXPO_PUBLIC_API_URL": "http://192.168.1.150:5118",
-      "GOOGLE_WEB_CLIENT_ID": "253722443834-1rium4sbtslb0de4ct9v6k2suetgnpad.apps.googleusercontent.com",
+      "EXPO_PUBLIC_API_URL": "",
+      "GOOGLE_WEB_CLIENT_ID": "",
       "GOOGLE_IOS_CLIENT_ID": "",
       "GOOGLE_ANDROID_CLIENT_ID": "",
-      "GOOGLE_EXPO_CLIENT_ID": "253722443834-1rium4sbtslb0de4ct9v6k2suetgnpad.apps.googleusercontent.com",
+      "GOOGLE_EXPO_CLIENT_ID": "",
       "eas": {
         "projectId": "8fe79228-2598-461f-ba30-83843385bbc7"
       }

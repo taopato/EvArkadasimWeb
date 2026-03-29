@@ -136,7 +136,18 @@ export const authApi = {
   },
   sendVerificationCode: (email) => api.post('/Auth/SendVerificationCode', { email }),
   verifyCodeAndRegister: (email, code, fullName, password) =>
-    api.post('/Auth/VerifyCodeAndRegister', { email, code, fullName, password }),
+    api.post('/Auth/VerifyCodeAndRegister', { email, code, fullName, password }).then((res) => {
+      const raw = res?.data || {};
+      const token = raw?.token;
+      const user = token
+        ? {
+            id: raw?.id ?? 0,
+            email: raw?.email ?? email,
+            fullName: raw?.fullName ?? fullName,
+          }
+        : undefined;
+      return { data: { token, user, raw } };
+    }),
   verifyCodeForReset: (email, code) => api.post('/Auth/VerifyCodeForReset', { email, code }),
   resetPassword: (email, code, newPassword) =>
     api.post('/Auth/ResetPassword', { email, code, newPassword }),
