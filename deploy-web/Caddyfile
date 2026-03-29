@@ -1,0 +1,10 @@
+evarkadasim.co, www.evarkadasim.co {
+    root * /var/www/evarkadasim
+    encode gzip zstd
+    file_server
+    try_files {path} /index.html
+}
+
+api.evarkadasim.co {
+    reverse_proxy 127.0.0.1:5118
+}
