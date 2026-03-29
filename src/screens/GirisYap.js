@@ -38,6 +38,10 @@ const GoogleLoginButton = ({
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const googleRedirectUri = useMemo(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      return `${window.location.origin}/oauthredirect`;
+    }
+
     if (isExpoGo) {
       try {
         return AuthSession.getRedirectUrl();
