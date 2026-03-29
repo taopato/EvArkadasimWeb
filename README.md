@@ -44,3 +44,6 @@ Google giriş akışı kod tarafında hazırdır. Çalıştırmak için aşağı
 - Borç/alacak ekranları backend ile hizalı
 - Tema sistemi aktif
 - QR ile Expo Go üzerinden test edilebilir
+
+
+-Tarik Deneme
