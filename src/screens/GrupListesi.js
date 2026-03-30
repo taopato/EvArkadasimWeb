@@ -70,6 +70,10 @@ export default function GroupListScreen({ navigation, route }) {
       navigation.navigate('HarcamaOzeti', { houseId: house.id, houseName: house.name });
       return;
     }
+    if (redirectTo === 'EvNotlari') {
+      navigation.navigate('EvNotlari', { houseId: house.id, houseName: house.name });
+      return;
+    }
     
     // Mevcut ekranlar
     if (redirectTo === 'ExpensesScreen' || redirectTo === 'Harcamalar') {

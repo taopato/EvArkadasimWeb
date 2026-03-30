@@ -15,7 +15,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
-import { authApi } from '../services/api';
+import { authApi, houseApi } from '../services/api';
 import { useCommonStyles } from '../shared/ui/CommonStyles';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import { TextInput as ThemedTextInput } from '../shared/ui/TextInput';
@@ -54,7 +54,7 @@ const GoogleLoginButton = ({
     const user = payload?.user;
 
     if (!token || !user) {
-      throw new Error('Google giris yaniti eksik.');
+        throw new Error('Google giriş yanıtı eksik.');
     }
 
     await login(user, token);
@@ -106,7 +106,7 @@ const GoogleLoginButton = ({
           : undefined
       );
     } catch (error) {
-      Alert.alert('Google girisi basarisiz', error?.message || 'Islem baslatilamadi.');
+      Alert.alert('Google girişi başarısız', error?.message || 'İşlem başlatılamadı.');
       setGoogleLoading(false);
     }
   };
@@ -123,7 +123,7 @@ const GoogleLoginButton = ({
       const idToken = response?.params?.id_token || response?.authentication?.idToken;
       if (!idToken) {
         setGoogleLoading(false);
-        Alert.alert('Google girisi basarisiz', 'Google kimlik belirteci alinamadi.');
+        Alert.alert('Google girişi başarısız', 'Google kimlik belirteci alınamadı.');
         return;
       }
 
@@ -131,8 +131,8 @@ const GoogleLoginButton = ({
         await finishGoogleLogin(idToken);
       } catch (error) {
         Alert.alert(
-          'Google girisi basarisiz',
-          error?.response?.data?.message || error?.message || 'Sunucuya giris yapilamadi.'
+          'Google girişi başarısız',
+          error?.response?.data?.message || error?.message || 'Sunucuya giriş yapılamadı.'
         );
       } finally {
         setGoogleLoading(false);
@@ -157,8 +157,8 @@ const GoogleLoginButton = ({
       } catch (error) {
         if (!cancelled) {
           Alert.alert(
-            'Google girisi basarisiz',
-            error?.response?.data?.message || error?.message || 'Sunucuya giris yapilamadi.'
+            'Google girişi başarısız',
+            error?.response?.data?.message || error?.message || 'Sunucuya giriş yapılamadı.'
           );
         }
       } finally {
@@ -191,21 +191,21 @@ const GoogleLoginButton = ({
       >
         <Text style={[styles.googleIcon, { color: theme.colors.primary[600] }]}>G</Text>
         <Text style={[styles.googleText, { color: theme.colors.text.primary }]}>
-          {googleLoading ? 'Google ile baglaniliyor...' : 'Google ile giris yap'}
+          {googleLoading ? 'Google ile bağlanılıyor...' : 'Google ile giriş yap'}
         </Text>
       </TouchableOpacity>
 
       {googleConfigured && isExpoGo && (
         <Text style={[styles.helper, { color: theme.colors.warning[600] }]}>
-          Expo Go ile denemek icin ayrica GOOGLE_EXPO_CLIENT_ID tanimlanmali.
+          Expo Go ile denemek için ayrıca GOOGLE_EXPO_CLIENT_ID tanımlanmalı.
         </Text>
       )}
     </>
   );
 };
 
-const GirisYap = ({ navigation }) => {
-  const { login } = useAuth();
+const GirisYap = ({ navigation, route }) => {
+  const { login, setDefaultHouseId } = useAuth();
   const { theme } = useTheme();
   const CommonStyles = useCommonStyles();
   const [email, setEmail] = useState('');
@@ -238,6 +238,31 @@ const GirisYap = ({ navigation }) => {
     []
   );
 
+  const invitationToken = route?.params?.invitationToken || '';
+  const invitationHouseId = Number(route?.params?.invitationHouseId) || 0;
+  const invitationEmail = route?.params?.invitationEmail || '';
+
+  const finalizeInvitationIfNeeded = async () => {
+    if (!invitationToken) {
+      return;
+    }
+
+    const response = await houseApi.acceptInvitation(invitationToken);
+    const joinedHouseId = Number(response?.data?.houseId) || invitationHouseId;
+
+    if (joinedHouseId) {
+      try {
+        const houseResponse = await houseApi.getById(joinedHouseId);
+        const house = houseResponse?.data;
+        await setDefaultHouseId(joinedHouseId, house?.name);
+      } catch {
+        await setDefaultHouseId(joinedHouseId);
+      }
+    }
+
+    Alert.alert('Başarılı', response?.data?.message || 'Davetiniz kabul edildi.');
+  };
+
   const googleClientConfig = useMemo(
     () => ({
       expoClientId: GOOGLE_CLIENT_IDS.expo || undefined,
@@ -253,14 +278,14 @@ const GirisYap = ({ navigation }) => {
     const normalizedEmail = normalizeEmail(email);
 
     if (!normalizedEmail || !password.trim()) {
-      setErrorMessage('Lutfen e-posta ve sifrenizi girin.');
-      Alert.alert('Hata', 'Lutfen e-posta ve sifrenizi girin.');
+      setErrorMessage('Lütfen e-posta ve şifrenizi girin.');
+      Alert.alert('Hata', 'Lütfen e-posta ve şifrenizi girin.');
       return;
     }
 
     if (!isValidEmail(normalizedEmail)) {
-      setErrorMessage('Lutfen gecerli bir e-posta adresi girin.');
-      Alert.alert('Hata', 'Lutfen gecerli bir e-posta adresi girin.');
+      setErrorMessage('Lütfen geçerli bir e-posta adresi girin.');
+      Alert.alert('Hata', 'Lütfen geçerli bir e-posta adresi girin.');
       return;
     }
 
@@ -320,11 +345,12 @@ const GirisYap = ({ navigation }) => {
       if (token && user) {
         setErrorMessage('');
         await login(user, token);
+        await finalizeInvitationIfNeeded();
         return;
       }
 
-      setErrorMessage(raw?.message || 'Lutfen bilgilerinizi kontrol edin.');
-      Alert.alert('Giris basarisiz', raw?.message || 'Lutfen bilgilerinizi kontrol edin.');
+      setErrorMessage(raw?.message || 'Lütfen bilgilerinizi kontrol edin.');
+      Alert.alert('Giriş başarısız', raw?.message || 'Lütfen bilgilerinizi kontrol edin.');
     } catch (error) {
       const status = error?.response?.status;
       const validationErrors = error?.response?.data?.errors;
@@ -333,22 +359,22 @@ const GirisYap = ({ navigation }) => {
       const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
       const lower = text.toLowerCase();
 
-      let message = 'Giris basarisiz. Lutfen bilgilerinizi kontrol edin.';
+      let message = 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
       if (Array.isArray(validationErrors) && validationErrors.length > 0) {
         message = validationErrors.map((item) => item?.message).filter(Boolean).join('\n');
       } else
       if (status === 401 && (lower.includes('kayitli bir kullanici bulunamadi') || lower.includes('uye olun'))) {
-        message = 'Bu e-posta ile kayitli bir hesap bulunamadi. Lutfen once uye olun.';
+        message = 'Bu e-posta ile kayıtlı bir hesap bulunamadı. Lütfen önce üye olun.';
       } else if (status === 401 && (lower.includes('sifreniz yanlis') || lower.includes('wrong password'))) {
-        message = 'Sifreniz yanlis. Lutfen tekrar deneyin.';
+        message = 'Şifreniz yanlış. Lütfen tekrar deneyin.';
       } else if (status === 401) {
-        message = 'E-posta veya sifre hatali.';
+        message = 'E-posta veya şifre hatalı.';
       } else if (text) {
         message = text;
       }
 
       setErrorMessage(message);
-      Alert.alert('Giris basarisiz', message);
+      Alert.alert('Giriş başarısız', message);
     } finally {
       setLoading(false);
     }
@@ -385,10 +411,10 @@ const GirisYap = ({ navigation }) => {
               <Image source={LOGO} style={styles.logo} resizeMode="contain" />
             </View>
             <Text style={[styles.heading, { color: theme.colors.text.primary }]}>
-              Ev Arkadasim
+              Ev Arkadaşım
             </Text>
             <Text style={[styles.subheading, { color: theme.colors.text.secondary }]}>
-              Harcamalari paylas, borclari gor, odemeleri tek yerden yonet.
+              Harcamaları paylaş, borçları gör, ödemeleri tek yerden yönet.
             </Text>
           </View>
 
@@ -410,9 +436,14 @@ const GirisYap = ({ navigation }) => {
               autoCapitalize="none"
               keyboardType="email-address"
             />
+            {!!invitationEmail && (
+              <Text style={[styles.helper, { color: theme.colors.primary[700], marginTop: -4, marginBottom: 10 }]}>
+                Bu davet {invitationEmail} adresi için gönderildi. Giriş yaptığınızda eve otomatik katılacaksınız.
+              </Text>
+            )}
             <ThemedTextInput
               style={{ marginBottom: 12 }}
-              placeholder="Sifre"
+              placeholder="Şifre"
               secureTextEntry
               value={password}
               onChangeText={setPassword}
@@ -436,11 +467,11 @@ const GirisYap = ({ navigation }) => {
               </View>
             )}
 
-            <ThemedButton title="Giris Yap" onPress={handleLogin} loading={loading} />
+            <ThemedButton title="Giriş Yap" onPress={handleLogin} loading={loading} />
 
             {!googleEnabledForCurrentPlatform && (
               <Text style={[styles.helper, { color: theme.colors.warning[600] }]}>
-                Google girisi bu ortam icin henuz yapilandirilmamis. Ekranin geri kalani sorunsuz calismaya devam eder.
+                Google girişi bu ortam için henüz yapılandırılmamış. Ekranın geri kalanı sorunsuz çalışmaya devam eder.
               </Text>
             )}
 
@@ -457,13 +488,13 @@ const GirisYap = ({ navigation }) => {
 
             <TouchableOpacity onPress={() => navigation.navigate('ForgotPasswordScreen')}>
               <Text style={[styles.link, { color: theme.colors.text.secondary }]}>
-                Sifremi unuttum
+                Şifremi unuttum
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('SignupScreen')}>
               <Text style={[styles.link, { color: theme.colors.primary[600] }]}>
-                Hesabin yok mu? Kayit ol
+                Hesabın yok mu? Kayıt ol
               </Text>
             </TouchableOpacity>
           </View>

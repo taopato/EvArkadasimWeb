@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from 'react-native';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import { useAuth } from '../context/AuthContext';
 import { HeroHeader } from '../shared/ui/premium/HeroHeader';
 import { WeekStrip } from '../shared/ui/premium/WeekStrip';
-import { expensesApi, houseApi, paymentsApi } from '../services/api';
+import { expensesApi, houseApi, houseNotesApi, paymentsApi } from '../services/api';
 import { normalizeExpense } from '../utils/expenseClassifier';
 import {
   deduplicateMonthlyPlans,
@@ -20,10 +20,17 @@ const HomeScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [billModalVisible, setBillModalVisible] = useState(false);
   const [weeklyTotal, setWeeklyTotal] = useState(0);
-  const [selectedDayKey, setSelectedDayKey] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedDayKey, setSelectedDayKey] = useState(() => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
   const [loadingWeekly, setLoadingWeekly] = useState(false);
   const [dashboardStats, setDashboardStats] = useState({ payable: 0, receivable: 0, pendingCount: 0, debtPeople: 0 });
   const [recentExpenses, setRecentExpenses] = useState([]);
+  const [notePreview, setNotePreview] = useState([]);
 
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const activeHouseId = user?.defaultHouseId ? Number(user.defaultHouseId) : null;
@@ -185,6 +192,33 @@ const HomeScreen = ({ navigation }) => {
     loadDashboard();
   }, [activeHouseId, user?.id]);
 
+  useEffect(() => {
+    const loadNotes = async () => {
+      if (!activeHouseId) {
+        setNotePreview([]);
+        return;
+      }
+
+      try {
+        const response = await houseNotesApi.getBoard(activeHouseId);
+        const sections = Array.isArray(response?.data?.sections) ? response.data.sections : [];
+        const nextPreview = sections
+          .flatMap((section) =>
+            (Array.isArray(section?.items) ? section.items : []).map((item) => ({
+              ...item,
+              sectionTitle: section.title,
+            }))
+          )
+          .slice(0, 5);
+        setNotePreview(nextPreview);
+      } catch {
+        setNotePreview([]);
+      }
+    };
+
+    loadNotes();
+  }, [activeHouseId]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -195,7 +229,7 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('BekleyenOdemeler', { userId: user?.id })}
           >
             <View style={styles.notificationIconWrap}>
-              <Text style={styles.notificationIconText}>💰</Text>
+              <Text style={styles.notificationIconText}>💸</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.notificationTitle}>Onay Bekleyen Ödemeniz Var</Text>
@@ -219,7 +253,7 @@ const HomeScreen = ({ navigation }) => {
 
         {hasDefaultHouse && (
           <View style={styles.todayCard}>
-            <Text style={styles.todayEyebrow}>Bugün için özet</Text>
+            <Text style={styles.todayEyebrow}>BUGÜN İÇİN ÖZET</Text>
             <Text style={styles.todayTitle}>{activeHouseName}</Text>
             <View style={styles.todayGrid}>
               <View style={styles.todayBox}>
@@ -231,7 +265,7 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={styles.todayValue}>{formatCurrency(dashboardStats.receivable)}</Text>
               </View>
               <View style={styles.todayBox}>
-                <Text style={styles.todayLabel}>Bekleyen ödeme</Text>
+                <Text style={styles.todayLabel}>Bekleyen Ödeme</Text>
                 <Text style={styles.todayValue}>{dashboardStats.pendingCount}</Text>
               </View>
               <View style={styles.todayBox}>
@@ -311,11 +345,11 @@ const HomeScreen = ({ navigation }) => {
               onPress={() => navigateToHouseScreen('TumHarcamalar', {}, { redirectTo: 'TumHarcamalar' })}
             />
             <NavButton
-              title="Analitik"
-              subtitle="Özetler ve dağılımlar"
-              emoji="📊"
+              title="Ev Notları"
+              subtitle="Ortak market ve ev listeleri"
+              emoji="📝"
               idx={2}
-              onPress={() => navigateToHouseScreen('HarcamaOzeti', {}, { redirectTo: 'HarcamaOzeti' })}
+              onPress={() => navigateToHouseScreen('EvNotlari', {}, { redirectTo: 'EvNotlari' })}
             />
             <NavButton
               title="Ödemeler"
@@ -351,6 +385,13 @@ const HomeScreen = ({ navigation }) => {
               emoji="📨"
               idx={7}
               onPress={() => navigateToHouseScreen('DavetEt')}
+            />
+            <NavButton
+              title="Analitik"
+              subtitle="Özetler ve dağılımlar"
+              emoji="📊"
+              idx={8}
+              onPress={() => navigateToHouseScreen('HarcamaOzeti', {}, { redirectTo: 'HarcamaOzeti' })}
             />
           </View>
         </View>
@@ -585,3 +626,5 @@ const makeStyles = (theme) =>
   });
 
 export default HomeScreen;
+
+

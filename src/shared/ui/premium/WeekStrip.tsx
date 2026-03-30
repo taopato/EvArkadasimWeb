@@ -4,16 +4,21 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { TouchableScale } from './TouchableScale';
 import { PremiumCard } from './Card';
 
-function startFromYesterday(d: Date): Date {
-  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  date.setUTCDate(date.getUTCDate() - 1);
-  return date;
+function startFromToday(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 function addDays(d: Date, n: number): Date {
   const x = new Date(d);
-  x.setUTCDate(d.getUTCDate() + n);
+  x.setDate(d.getDate() + n);
   return x;
+}
+
+function formatDayKey(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 type DayInfo = {
@@ -30,12 +35,12 @@ type Props = {
 
 export const WeekStrip: React.FC<Props> = ({ selectedKey, onSelect }) => {
   const { theme } = useTheme();
-  const startDate = startFromYesterday(new Date());
+  const startDate = startFromToday(new Date());
   const days: DayInfo[] = Array.from({ length: 7 }).map((_, i) => {
     const d = addDays(startDate, i);
-    const key = d.toISOString().slice(0, 10);
-    const weekday = d.toLocaleDateString('tr-TR', { weekday: 'short', timeZone: 'UTC' });
-    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const key = formatDayKey(d);
+    const weekday = d.toLocaleDateString('tr-TR', { weekday: 'short' });
+    const dd = String(d.getDate()).padStart(2, '0');
     return { date: d, key, label: weekday, sublabel: dd };
   });
 

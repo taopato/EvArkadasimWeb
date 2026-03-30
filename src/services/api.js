@@ -176,8 +176,8 @@ export const houseApi = {
   addMember: (houseId, userId) => api.post(`/Houses/${houseId}/members`, { houseId, userId }),
   removeMember: (houseId, userId) => api.delete(`/Houses/${houseId}/members/${userId}`),
   sendInvitation: (houseId, email) => api.post(`/Houses/${houseId}/invitations`, { email }),
-  acceptInvitation: (userId, invitationCode) =>
-    api.post('/Houses/AcceptInvitation', { userId, invitationCode }),
+  acceptInvitation: (invitationCode) =>
+    api.post('/Houses/AcceptInvitation', { invitationCode }),
   getMembers: (houseId) => api.get(`/Houses/${houseId}/members`),
 
   // Debts
@@ -294,6 +294,16 @@ export const receiptsApi = {
   reparse: (receiptId) => api.post(`/Receipts/${receiptId}/Reparse`),
   update: (receiptId, payload) => api.put(`/Receipts/${receiptId}`, payload),
   convertToExpense: (receiptId, payload) => api.post(`/Receipts/${receiptId}/ConvertToExpense`, payload),
+};
+
+// ---------------- HOUSE NOTES ----------------
+export const houseNotesApi = {
+  getBoard: (houseId) => api.get(`/HouseNotes/${houseId}`),
+  createSection: (houseId, title) => api.post(`/HouseNotes/${houseId}/sections`, { title }),
+  createItem: (sectionId, content) => api.post(`/HouseNotes/sections/${sectionId}/items`, { content }),
+  completeItem: (itemId) => api.post(`/HouseNotes/items/${itemId}/complete`),
+  deleteItem: (itemId) => api.delete(`/HouseNotes/items/${itemId}`),
+  deleteSection: (sectionId) => api.delete(`/HouseNotes/sections/${sectionId}`),
 };
 
 

@@ -81,6 +81,13 @@ export default function SettingsScreen({ navigation }) {
         <Text style={styles.logoutTitle}>Çıkış Yap</Text>
         <Text style={styles.logoutDesc}>Oturumu bu cihazdan kapat</Text>
       </TouchableOpacity>
+
+      <View style={styles.signatureWrap} pointerEvents="none">
+        <Text style={styles.signatureText}>
+          Bu bir Tarık Çetintürk projesidir. Backend, frontend ve DevOps süreçlerinin tamamı
+          tek başına geliştirilmiştir.
+        </Text>
+      </View>
     </View>
   );
 }
@@ -196,5 +203,16 @@ const makeStyles = (theme) =>
     logoutDesc: {
       color: theme.colors.error[600],
       fontSize: 13,
+    },
+    signatureWrap: {
+      marginTop: 14,
+      paddingHorizontal: 10,
+    },
+    signatureText: {
+      color: theme.colors.text.secondary,
+      opacity: 0.5,
+      fontSize: 12,
+      lineHeight: 18,
+      textAlign: 'center',
     },
   });
