@@ -57,6 +57,7 @@ import FisDetayi from './src/screens/FisDetayi';
 import FisGecmisi from './src/screens/FisGecmisi';
 import DavetKabul from './src/screens/DavetKabul';
 import ProfilDuzenle from './src/screens/ProfilDuzenle';
+import EvNotlari from './src/screens/EvNotlari';
 
 
 const Stack = createNativeStackNavigator();
@@ -152,6 +153,7 @@ const linking = {
       TumHarcamalar: 'tum-harcamalar',
       HarcamaOzeti: 'harcama-ozeti',
       HarcamaListesiDetay: 'harcama-listesi-detay',
+      EvNotlari: 'ev-notlari',
       DavetKabul: {
         path: 'davet-kabul',
         parse: {
@@ -226,6 +228,7 @@ function ThemedNavigator() {
         ) : (
           <>
             <Stack.Screen name="Home" component={AnaSayfa} options={{ title: 'Ana Menü' }} />
+            <Stack.Screen name="DavetKabul" component={DavetKabul} options={{ title: 'Eve Katıl', headerShown: false }} />
             <Stack.Screen name="ExpensesScreen" component={GunlukHarcamalar} options={{ title: 'Günlük Harcamalar' }} />
             <Stack.Screen name="PaymentsScreen" component={Odemeler} options={{ title: '' }} />
             <Stack.Screen name="PendingPaymentsScreen" component={BekleyenOdemeler} options={{ title: 'Bekleyen Ödemeler' }} />
@@ -250,7 +253,7 @@ function ThemedNavigator() {
             <Stack.Screen name="HarcamaDetayi" component={HarcamaDetayi} options={{ title: '' }} />
             <Stack.Screen name="HarcamaEkle" component={HarcamaEkle} options={{ title: '' }} />
             <Stack.Screen name="FisDetayi" component={FisDetayi} options={{ title: '' }} />
-            <Stack.Screen name="FisGecmisi" component={FisGecmisi} options={{ title: 'Fis Gecmisi' }} />
+            <Stack.Screen name="FisGecmisi" component={FisGecmisi} options={{ title: 'Fiş Geçmişi' }} />
             <Stack.Screen name="Ozet" component={Ozet} options={{ title: '' }} />
             <Stack.Screen name="YeniEvGrubu" component={YeniEvGrubu} options={{ title: 'Yeni Grup Oluştur' }} />
             <Stack.Screen name="EvGrubuArkadaslarim" component={EvGrubuArkadaslarim} options={{ title: 'Ev Arkadaşlarım' }} />
@@ -279,6 +282,7 @@ function ThemedNavigator() {
             <Stack.Screen name="TumHarcamalar" component={TumHarcamalar} options={{ title: '' }} />
             <Stack.Screen name="HarcamaOzeti" component={HarcamaOzeti} options={{ title: 'Harcama Özeti' }} />
             <Stack.Screen name="HarcamaListesiDetay" component={HarcamaListesi} options={{ title: 'Harcama Listesi' }} />
+            <Stack.Screen name="EvNotlari" component={EvNotlari} options={{ title: 'Ev Notları' }} />
           </>
         )}
       </Stack.Navigator>
