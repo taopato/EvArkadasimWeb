@@ -15,6 +15,7 @@ import { expensesApi } from '../services/api';
 import { useCommonStyles, makeColorThemes } from '../shared/ui/CommonStyles';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import Toast from '../components/Toast';
+import eventBus from '../shared/events/bus';
 
 // basit TR tarih
 const formatDate = (dateString) => {
@@ -122,6 +123,25 @@ const BillDetailScreen = ({ route, navigation }) => {
   const dueDay = bill?.dueDay || bill?.DueDay || null;
 
   const handleDeleteBill = () => {
+    const confirmDelete = async () => {
+      try {
+        await expensesApi.remove(billId);
+        try { eventBus.emit('expenses:updated', { houseId: Number(houseId) }); } catch {}
+        navigation.goBack();
+      } catch (error) {
+        console.error('Fatura silme hatası:', error);
+        showToast('Fatura silinirken bir hata oluştu', 'error');
+      }
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm('Bu faturayi silmek istediginizden emin misiniz?');
+      if (confirmed) {
+        confirmDelete();
+      }
+      return;
+    }
+
     Alert.alert(
       'Faturayı Sil',
       'Bu faturayı silmek istediğinizden emin misiniz?',
@@ -130,16 +150,7 @@ const BillDetailScreen = ({ route, navigation }) => {
         {
           text: 'Sil',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await expensesApi.remove(billId);
-              showToast('Fatura başarıyla silindi', 'success');
-              navigation.goBack();
-            } catch (error) {
-              console.error('Fatura silme hatası:', error);
-              showToast('Fatura silinirken bir hata oluştu', 'error');
-            }
-          }
+          onPress: confirmDelete,
         }
       ]
     );
@@ -304,3 +315,4 @@ function makeStyles(theme) {
 }
 
 export default BillDetailScreen;
+

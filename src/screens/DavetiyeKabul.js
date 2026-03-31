@@ -1,46 +1,26 @@
 import React, { useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView
-} from 'react-native';
-import { useCommonStyles, makeColorThemes } from '../shared/ui/CommonStyles';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCommonStyles } from '../shared/ui/CommonStyles';
 import { useTheme } from '../shared/theme/ThemeProvider';
 
-const AcceptInvitationScreen = ({ navigation, route }) => {
+const AcceptInvitationScreen = () => {
   const CommonStyles = useCommonStyles();
   const { theme } = useTheme();
-  const ColorThemes = makeColorThemes(theme);
   const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <View style={CommonStyles.container}>
-      <ScrollView style={CommonStyles.content}>
+      <ScrollView style={CommonStyles.content} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={CommonStyles.header}>
           <Text style={CommonStyles.title}>Davet Kabul Et</Text>
-          <Text style={CommonStyles.subtitle}>
-            Bu özellik yakında eklenecek
-          </Text>
+          <Text style={CommonStyles.subtitle}>Bu eski ekran artık kullanılmıyor.</Text>
         </View>
 
-        <View style={CommonStyles.card}>
+        <View style={styles.card}>
           <Text style={styles.infoText}>
-            📨 Davet kabul etme özelliği geliştirme aşamasındadır.
+            Güncel davet akışı yeni davet kabul ekranından çalışır. Bu sayfa sadece geriye dönük uyumluluk için tutuluyor.
           </Text>
         </View>
-
-        <TouchableOpacity 
-          style={CommonStyles.menuButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.8}
-        >
-          <View style={[CommonStyles.buttonContent, { backgroundColor: ColorThemes.neutral.background }]}>
-            <Text style={CommonStyles.buttonIcon}>🔙</Text>
-            <Text style={CommonStyles.buttonText}>Geri Dön</Text>
-            <Text style={CommonStyles.buttonSubtext}>Önceki sayfaya dön</Text>
-          </View>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -48,8 +28,16 @@ const AcceptInvitationScreen = ({ navigation, route }) => {
 
 function makeStyles(theme) {
   return StyleSheet.create({
+    content: { paddingBottom: 120 },
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral?.[200],
+      padding: 18,
+    },
     infoText: {
-      fontSize: 16,
+      fontSize: 15,
       color: theme.colors.text.secondary,
       lineHeight: 24,
       textAlign: 'center',
@@ -57,4 +45,4 @@ function makeStyles(theme) {
   });
 }
 
-export default AcceptInvitationScreen; 
+export default AcceptInvitationScreen;

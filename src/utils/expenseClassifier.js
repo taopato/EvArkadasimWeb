@@ -40,12 +40,14 @@ export const normalizeExpense = (raw) => {
   const installmentCount = raw?.installmentCount ?? raw?.InstallmentCount ?? null;
 
   const dateStr =
+    raw?.postDate ??
+    raw?.PostDate ??
+    raw?.dueDate ??
+    raw?.DueDate ??
     raw?.kayitTarihi ??
     raw?.KayitTarihi ??
     raw?.createdDate ??
-    raw?.CreatedDate ??
-    raw?.postDate ??
-    raw?.PostDate;
+    raw?.CreatedDate;
 
   let key;
   const categoryIdCandidate =

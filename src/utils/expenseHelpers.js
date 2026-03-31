@@ -85,12 +85,14 @@ export const formatDate = (date) => {
 
 export const getItemDate = (item) => {
   const raw = item?._raw || {};
-  const date = item?.date ||
-    raw.kayitTarihi ||
-    raw.postDate ||
-    raw.createdDate ||
-    raw.KayitTarihi ||
+  const date = raw.postDate ||
     raw.PostDate ||
+    item?.date ||
+    raw.dueDate ||
+    raw.DueDate ||
+    raw.kayitTarihi ||
+    raw.KayitTarihi ||
+    raw.createdDate ||
     raw.CreatedDate;
 
   return parseExpenseDate(date);

@@ -21,6 +21,7 @@ import { houseApi, receiptsApi } from '../services/api';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import { useCommonStyles } from '../shared/ui/CommonStyles';
 import { BASE_URL } from '../shared/config/env';
+import { shadow } from '../shared/ui/shadow';
 
 const CATEGORY_OPTIONS = [
   { key: 'Market', label: 'Market' },
@@ -1150,8 +1151,10 @@ export default function FisDetayi({ route, navigation }) {
                       })}
                     </View>
                     <View
-                      style={StyleSheet.absoluteFill}
-                      pointerEvents={activeMarker ? 'auto' : 'box-none'}
+                      style={[
+                        StyleSheet.absoluteFill,
+                        { pointerEvents: activeMarker ? 'auto' : 'box-none' },
+                      ]}
                       {...drawResponder.panHandlers}
                     >
                       {draftSelectionStyle ? (
@@ -1511,11 +1514,7 @@ const makeStyles = (theme) => StyleSheet.create({
     borderColor: theme.colors.neutral[200],
   },
   markerPillActive: {
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    ...shadow(2, 'rgba(0,0,0,0.16)'),
   },
   markerDot: {
     width: 10,
@@ -1532,10 +1531,7 @@ const makeStyles = (theme) => StyleSheet.create({
     borderWidth: 2,
     borderRadius: 12,
     borderStyle: 'dashed',
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    ...shadow(2, 'rgba(0,0,0,0.16)'),
   },
   markerDoneButton: {
     paddingVertical: 8,
@@ -1576,20 +1572,12 @@ const makeStyles = (theme) => StyleSheet.create({
   imageOverlayHitSelected: {
     borderColor: theme.colors.warning[700],
     backgroundColor: 'rgba(255,196,0,0.22)',
-    shadowColor: theme.colors.warning[700],
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 6,
+    ...shadow(3, 'rgba(202, 140, 4, 0.35)'),
   },
   imageOverlayHitActive: {
     borderColor: theme.colors.primary[700],
     backgroundColor: 'rgba(38,110,255,0.34)',
-    shadowColor: theme.colors.primary[700],
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
+    ...shadow(3, 'rgba(29, 78, 216, 0.4)'),
   },
   imageOverlayBadge: {
     marginTop: 3,

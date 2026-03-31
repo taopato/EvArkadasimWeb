@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Modal,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useCommonStyles } from '../shared/ui/CommonStyles';
@@ -20,6 +29,13 @@ const formatThousandsTRInput = (text) => {
 const parseIntFromTR = (value) => {
   const digits = String(value || '').replace(/\D/g, '');
   return digits ? Number(digits) : 0;
+};
+
+const formatDateTR = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('tr-TR');
 };
 
 export default function DuzenliGiderEkle({ navigation, route }) {
@@ -47,19 +63,23 @@ export default function DuzenliGiderEkle({ navigation, route }) {
   const [tempMonthOffset, setTempMonthOffset] = useState(0);
   const [tempDay, setTempDay] = useState(() => String(Math.min(new Date().getDate(), 28)));
 
-  const calendarMonths = useMemo(() => Array.from({ length: 12 }).map((_, index) => {
-    const now = new Date();
-    const date = new Date(now.getFullYear(), index, 1);
-    return {
-      key: index,
-      date,
-      label: date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' }),
-    };
-  }), []);
+  const calendarMonths = useMemo(
+    () =>
+      Array.from({ length: 12 }).map((_, index) => {
+        const now = new Date();
+        const date = new Date(now.getFullYear(), index, 1);
+        return {
+          key: index,
+          date,
+          label: date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' }),
+        };
+      }),
+    []
+  );
 
   useEffect(() => {
     if (!activeHouseId) {
-      Alert.alert('Hata', 'Aktif bir ev grubu bulunamadi.');
+      Alert.alert('Hata', 'Aktif bir ev grubu bulunamadı.');
       navigation.navigate('GrupListesi');
       return;
     }
@@ -91,19 +111,23 @@ export default function DuzenliGiderEkle({ navigation, route }) {
 
   const onSave = async () => {
     try {
-      if (!payerUserId) return Alert.alert('Hata', 'Odeyecek kisiyi secin.');
+      if (!payerUserId) {
+        return Alert.alert('Hata', 'Ödeyecek kişiyi seçin.');
+      }
       const dueDayNum = Number(selectedDate.getDate());
-      if (!(dueDayNum >= 1 && dueDayNum <= 28)) return Alert.alert('Hata', 'Lutfen 1-28 arasinda bir gun secin.');
+      if (!(dueDayNum >= 1 && dueDayNum <= 28)) {
+        return Alert.alert('Hata', 'Lütfen 1-28 arasında bir gün seçin.');
+      }
 
       const startMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
       const isoStart = `${startMonth}-01T00:00:00Z`;
       const safeTur = getCategoryDisplayName(type);
       const categoryEnum = toExpenseCategory(type);
-      const descriptionSafe = `${safeTur} | Baslangic ${selectedDate.toLocaleDateString('tr-TR')}`;
+      const descriptionSafe = `${safeTur} | Başlangıç ${selectedDate.toLocaleDateString('tr-TR')}`;
 
       if (mode === 'installment') {
         const total = parseIntFromTR(totalAmount);
-        if (!(total > 0)) return Alert.alert('Hata', 'Toplam tutar sifirdan buyuk olmali.');
+        if (!(total > 0)) return Alert.alert('Hata', 'Toplam tutar sıfırdan büyük olmalıdır.');
 
         await expensesApi.create({
           mode: 'installment',
@@ -125,10 +149,10 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           Aciklama: descriptionSafe,
         });
 
-        Alert.alert('Basarili', 'Taksitli gider plani olusturuldu.');
+        Alert.alert('Başarılı', 'Taksitli gider planı oluşturuldu.');
       } else if (mode === 'recurring') {
         const monthly = parseIntFromTR(fixedAmount);
-        if (!(monthly > 0)) return Alert.alert('Hata', 'Aylik tutar sifirdan buyuk olmali.');
+        if (!(monthly > 0)) return Alert.alert('Hata', 'Aylık tutar sıfırdan büyük olmalıdır.');
 
         await expensesApi.create({
           mode: 'recurring',
@@ -150,10 +174,10 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           Aciklama: descriptionSafe,
         });
 
-        Alert.alert('Basarili', 'Duzenli gider plani olusturuldu.');
+        Alert.alert('Başarılı', 'Düzenli gider planı oluşturuldu.');
       } else {
         const once = parseIntFromTR(fixedAmount);
-        if (!(once > 0)) return Alert.alert('Hata', 'Tutar sifirdan buyuk olmali.');
+        if (!(once > 0)) return Alert.alert('Hata', 'Tutar sıfırdan büyük olmalıdır.');
 
         await expensesApi.create({
           tur: safeTur,
@@ -172,7 +196,7 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           Aciklama: descriptionSafe,
         });
 
-        Alert.alert('Basarili', 'Tek seferlik gider olusturuldu.');
+        Alert.alert('Başarılı', 'Tek seferlik gider oluşturuldu.');
       }
 
       eventBus.emit('expenses:updated', { houseId: activeHouseId });
@@ -202,14 +226,14 @@ export default function DuzenliGiderEkle({ navigation, route }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={CommonStyles.header}>
-          <Text style={CommonStyles.title}>Odeme Plani</Text>
-          <Text style={CommonStyles.subtitle}>{activeHouseName} icin sade ve net bir gider plani olustur.</Text>
+          <Text style={CommonStyles.title}>Ödeme Planı</Text>
+          <Text style={CommonStyles.subtitle}>{activeHouseName} için sade ve net bir gider planı oluştur.</Text>
         </View>
 
         <View style={CommonStyles.card}>
           <Text style={styles.sectionTitle}>Plan tipi</Text>
           <View style={styles.rowWrap}>
-            <Chip title="Duzenli" active={mode === 'recurring'} onPress={() => setMode('recurring')} />
+            <Chip title="Düzenli" active={mode === 'recurring'} onPress={() => setMode('recurring')} />
             <Chip title="Taksitli" active={mode === 'installment'} onPress={() => setMode('installment')} />
             <Chip title="Tek seferlik" active={mode === 'irregular'} onPress={() => setMode('irregular')} />
           </View>
@@ -218,17 +242,17 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           <View style={styles.rowWrap}>
             {[
               ['Rent', 'Kira'],
-              ['Internet', 'Internet'],
+              ['Internet', 'İnternet'],
               ['Electricity', 'Elektrik'],
               ['Water', 'Su'],
-              ['Gas', 'Dogalgaz'],
-              ['Other', 'Diger'],
+              ['Gas', 'Doğalgaz'],
+              ['Other', 'Diğer'],
             ].map(([key, label]) => (
               <Chip key={key} title={label} active={type === key} onPress={() => setType(key)} />
             ))}
           </View>
 
-          <Text style={styles.sectionTitle}>Odeyecek kisi</Text>
+          <Text style={styles.sectionTitle}>Ödeyecek kişi</Text>
           <View style={styles.rowWrap}>
             {members.map((member) => (
               <Chip
@@ -242,7 +266,7 @@ export default function DuzenliGiderEkle({ navigation, route }) {
 
           {(mode === 'recurring' || mode === 'irregular') && (
             <>
-              <Text style={CommonStyles.label}>{mode === 'recurring' ? 'Aylik tutar (TL)' : 'Tutar (TL)'}</Text>
+              <Text style={CommonStyles.label}>{mode === 'recurring' ? 'Aylık tutar (TL)' : 'Tutar (TL)'}</Text>
               <TextInput
                 style={styles.input}
                 value={fixedAmount}
@@ -268,7 +292,7 @@ export default function DuzenliGiderEkle({ navigation, route }) {
 
           {mode !== 'irregular' && (
             <>
-              <Text style={CommonStyles.label}>Sure</Text>
+              <Text style={CommonStyles.label}>Süre</Text>
               <View style={styles.rowWrap}>
                 {['3', '6', '12'].map((count) => (
                   <Chip key={count} title={`${count} Ay`} active={installmentCount === count} onPress={() => setInstallmentCount(count)} />
@@ -277,15 +301,17 @@ export default function DuzenliGiderEkle({ navigation, route }) {
             </>
           )}
 
-          <Text style={CommonStyles.label}>{mode === 'irregular' ? 'Tarih sec' : 'Baslangic tarihi ve odeme gunu'}</Text>
+          <Text style={CommonStyles.label}>{mode === 'irregular' ? 'Tarih seç' : 'Başlangıç tarihi ve ödeme günü'}</Text>
           <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)} activeOpacity={0.88}>
-            <Text style={styles.dateButtonText}>{selectedDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}</Text>
-            <Text style={styles.dateHint}>Takvimden sec</Text>
+            <Text style={styles.dateButtonText}>
+              {selectedDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })}
+            </Text>
+            <Text style={styles.dateHint}>Takvimden seç</Text>
           </TouchableOpacity>
 
           {mode === 'installment' && (
             <>
-              <Text style={CommonStyles.label}>Katilimcilar</Text>
+              <Text style={CommonStyles.label}>Katılımcılar</Text>
               <View style={styles.rowWrap}>
                 {members.map((member) => {
                   const id = String(member.userId);
@@ -304,7 +330,7 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           )}
 
           <TouchableOpacity style={styles.saveButton} onPress={onSave} activeOpacity={0.9}>
-            <Text style={styles.saveButtonText}>Plani Kaydet</Text>
+            <Text style={styles.saveButtonText}>Planı Kaydet</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -312,44 +338,46 @@ export default function DuzenliGiderEkle({ navigation, route }) {
       <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Tarih sec</Text>
+            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>Tarih seç</Text>
 
-            <Text style={styles.modalLabel}>Ay</Text>
-            <View style={styles.monthGrid}>
-              {calendarMonths.map((month) => (
-                <Chip
-                  key={String(month.key)}
-                  title={month.label}
-                  active={tempMonthOffset === month.key}
-                  onPress={() => setTempMonthOffset(month.key)}
-                />
-              ))}
-            </View>
+              <Text style={styles.modalLabel}>Ay</Text>
+              <View style={styles.monthGrid}>
+                {calendarMonths.map((month) => (
+                  <Chip
+                    key={String(month.key)}
+                    title={month.label}
+                    active={tempMonthOffset === month.key}
+                    onPress={() => setTempMonthOffset(month.key)}
+                  />
+                ))}
+              </View>
 
-            <Text style={styles.modalLabel}>Gun</Text>
-            <View style={styles.dayGrid}>
-              {Array.from({ length: 28 }).map((_, index) => {
-                const day = String(index + 1);
-                return (
-                  <TouchableOpacity
-                    key={day}
-                    style={[styles.dayCell, tempDay === day && styles.dayCellActive]}
-                    onPress={() => setTempDay(day)}
-                  >
-                    <Text style={[styles.dayCellText, tempDay === day && styles.dayCellTextActive]}>{day}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+              <Text style={styles.modalLabel}>Gün</Text>
+              <View style={styles.dayGrid}>
+                {Array.from({ length: 28 }).map((_, index) => {
+                  const day = String(index + 1);
+                  return (
+                    <TouchableOpacity
+                      key={day}
+                      style={[styles.dayCell, tempDay === day && styles.dayCellActive]}
+                      onPress={() => setTempDay(day)}
+                    >
+                      <Text style={[styles.dayCellText, tempDay === day && styles.dayCellTextActive]}>{day}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.secondaryBtn} onPress={() => setShowDatePicker(false)}>
-                <Text style={styles.secondaryBtnText}>Iptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.primaryBtn} onPress={applySelectedDate}>
-                <Text style={styles.primaryBtnText}>Sec</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.secondaryBtn} onPress={() => setShowDatePicker(false)}>
+                  <Text style={styles.secondaryBtnText}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.primaryBtn} onPress={applySelectedDate}>
+                  <Text style={styles.primaryBtnText}>Seç</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -357,93 +385,101 @@ export default function DuzenliGiderEkle({ navigation, route }) {
   );
 }
 
-const makeStyles = (theme) => StyleSheet.create({
-  scrollContent: { paddingBottom: 220 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text.primary, marginBottom: 10 },
-  rowWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
-  monthGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
-  chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    backgroundColor: theme.colors.neutral[100],
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  chipActive: { backgroundColor: theme.colors.primary[600] },
-  chipText: { color: theme.colors.text.primary, fontWeight: '700' },
-  chipTextActive: { color: theme.colors.text.onPrimary },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: theme.colors.text.primary,
-    marginBottom: 12,
-  },
-  dateButton: {
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    backgroundColor: theme.colors.surface,
-    marginBottom: 14,
-  },
-  dateButtonText: { color: theme.colors.text.primary, fontSize: 15, fontWeight: '800' },
-  dateHint: { color: theme.colors.text.secondary, marginTop: 4 },
-  saveButton: {
-    marginTop: 6,
-    backgroundColor: theme.colors.primary[600],
-    borderRadius: 16,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  saveButtonText: { color: theme.colors.text.onPrimary, fontWeight: '900', fontSize: 16 },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 18,
-    maxHeight: '88%',
-  },
-  modalTitle: { fontSize: 20, fontWeight: '900', color: theme.colors.text.primary, marginBottom: 12 },
-  modalLabel: { fontSize: 14, fontWeight: '800', color: theme.colors.text.secondary, marginBottom: 8, marginTop: 6 },
-  dayGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
-  dayCell: {
-    width: '14.28%',
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  dayCellActive: { backgroundColor: theme.colors.primary[600] },
-  dayCellText: { color: theme.colors.text.primary, fontWeight: '700' },
-  dayCellTextActive: { color: theme.colors.text.onPrimary },
-  modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  secondaryBtn: {
-    flex: 1,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  secondaryBtnText: { color: theme.colors.text.primary, fontWeight: '800' },
-  primaryBtn: {
-    flex: 1,
-    marginLeft: 8,
-    backgroundColor: theme.colors.primary[600],
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  primaryBtnText: { color: theme.colors.text.onPrimary, fontWeight: '800' },
-});
+const makeStyles = (theme) =>
+  StyleSheet.create({
+    scrollContent: { paddingBottom: 180 },
+    modalScrollContent: { paddingBottom: 12 },
+    sectionTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text.primary, marginBottom: 10 },
+    rowWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
+    monthGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
+    chip: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      backgroundColor: theme.colors.neutral[100],
+      marginRight: 8,
+      marginBottom: 8,
+    },
+    chipActive: { backgroundColor: theme.colors.primary[600] },
+    chipText: { color: theme.colors.text.primary, fontWeight: '700' },
+    chipTextActive: { color: theme.colors.text.onPrimary },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      color: theme.colors.text.primary,
+      marginBottom: 12,
+    },
+    dateButton: {
+      borderRadius: 16,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+      backgroundColor: theme.colors.surface,
+      marginBottom: 14,
+    },
+    dateButtonText: { color: theme.colors.text.primary, fontSize: 15, fontWeight: '800' },
+    dateHint: { color: theme.colors.text.secondary, marginTop: 4 },
+    saveButton: {
+      marginTop: 6,
+      backgroundColor: theme.colors.primary[600],
+      borderRadius: 16,
+      paddingVertical: 15,
+      alignItems: 'center',
+    },
+    saveButtonText: { color: theme.colors.text.onPrimary, fontWeight: '900', fontSize: 16 },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      justifyContent: 'flex-end',
+    },
+    modalCard: {
+      backgroundColor: theme.colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 18,
+      maxHeight: '88%',
+    },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: theme.colors.text.primary, marginBottom: 12 },
+    modalLabel: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: theme.colors.text.secondary,
+      marginBottom: 8,
+      marginTop: 6,
+    },
+    dayGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
+    dayCell: {
+      width: '14.28%',
+      aspectRatio: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 12,
+      marginBottom: 8,
+    },
+    dayCellActive: { backgroundColor: theme.colors.primary[600] },
+    dayCellText: { color: theme.colors.text.primary, fontWeight: '700' },
+    dayCellTextActive: { color: theme.colors.text.onPrimary },
+    modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+    secondaryBtn: {
+      flex: 1,
+      marginRight: 8,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    secondaryBtnText: { color: theme.colors.text.primary, fontWeight: '800' },
+    primaryBtn: {
+      flex: 1,
+      marginLeft: 8,
+      backgroundColor: theme.colors.primary[600],
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    primaryBtnText: { color: theme.colors.text.onPrimary, fontWeight: '800' },
+  });

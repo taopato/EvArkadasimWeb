@@ -266,6 +266,28 @@ const HarcamaDetayi = ({ navigation, route }) => {
   };
 
   const handleDeleteExpense = () => {
+    const confirmDelete = async () => {
+      try {
+        console.log('🗑️ Deleting expense:', expenseId);
+        const response = await expensesApi.remove(expenseId);
+        console.log('✅ Delete response:', response?.data);
+        try { eventBus.emit('expenses:updated', { houseId: Number(houseId) }); } catch {}
+        navigation.goBack();
+      } catch (error) {
+        console.error('❌ Delete expense error:', error);
+        console.error('❌ Delete error response:', error?.response?.data);
+        Alert.alert('Hata', error?.response?.data?.message || error?.message || 'Harcama silinirken bir hata olu�tu.');
+      }
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm('Bu harcamayi silmek istediginizden emin misiniz?');
+      if (confirmed) {
+        confirmDelete();
+      }
+      return;
+    }
+
     Alert.alert(
       'Harcamayı Sil',
       'Bu harcamayı silmek istediğinizden emin misiniz?',
@@ -274,20 +296,7 @@ const HarcamaDetayi = ({ navigation, route }) => {
         {
           text: 'Sil',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🗑️ Deleting expense:', expenseId);
-              const response = await expensesApi.remove(expenseId);
-              console.log('✅ Delete response:', response?.data);
-              Alert.alert('Başarılı', 'Harcama silindi');
-              try { eventBus.emit('expenses:updated', { houseId: Number(houseId) }); } catch {}
-              navigation.goBack();
-            } catch (error) {
-              console.error('❌ Delete expense error:', error);
-              console.error('❌ Delete error response:', error?.response?.data);
-              Alert.alert('Hata', `Harcama silinirken bir hata oluştu:\n\n${error?.response?.data?.message || error?.message || 'Bilinmeyen hata'}`);
-            }
-          },
+          onPress: confirmDelete,
         },
       ]
     );
@@ -710,3 +719,4 @@ function makeStyles(theme) {
 }
 
 export default HarcamaDetayi;
+

@@ -13,7 +13,8 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  TextInput
+  TextInput,
+  useWindowDimensions
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { expensesApi, houseApi } from '../services/api';
@@ -21,6 +22,9 @@ import { useTheme } from '../shared/theme/ThemeProvider';
 import { useCommonStyles } from '../shared/ui/CommonStyles';
 import { BILL_KEYS, normalizeExpense } from '../utils/expenseClassifier';
 import { HeroHeader } from '../shared/ui/premium/HeroHeader';
+import { useFocusEffect } from '@react-navigation/native';
+import eventBus from '../shared/events/bus';
+import { shadow } from '../shared/ui/shadow';
 import {
   compareByRecentDate,
   getUTCMonthWindow,
@@ -45,9 +49,11 @@ const TumHarcamalarScreen = ({ navigation, route }) => {
   const { user } = useAuth();
   const { houseId: routeHouseId, houseName } = route.params || {};
   const houseId = routeHouseId || user?.defaultHouseId;
+  const { width } = useWindowDimensions();
+  const isCompact = width < 520;
   const CommonStyles = useCommonStyles();
   const { theme } = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, isCompact), [theme, isCompact]);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -161,6 +167,25 @@ const TumHarcamalarScreen = ({ navigation, route }) => {
   useEffect(() => {
     loadData();
   }, [houseId]);
+
+  useEffect(() => {
+    const onUpdated = ({ houseId: changedId }) => {
+      if (Number(changedId) === Number(houseId)) {
+        loadData();
+      }
+    };
+
+    eventBus.on('expenses:updated', onUpdated);
+    return () => {
+      eventBus.off('expenses:updated', onUpdated);
+    };
+  }, [houseId]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadData();
+    }, [houseId])
+  );
 
   // Dönem filtresi
   const getDateRange = () => {
@@ -610,13 +635,13 @@ const TumHarcamalarScreen = ({ navigation, route }) => {
   );
 };
 
-function makeStyles(theme) {
+function makeStyles(theme, isCompact) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.surface },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.surface },
     loadingText: { marginTop: 16, fontSize: 16, color: theme.colors.text.secondary },
     actionRow: {
-      flexDirection: 'row',
+      flexDirection: isCompact ? 'column' : 'row',
       gap: 10,
       paddingHorizontal: 16,
       paddingTop: 14,
@@ -631,11 +656,7 @@ function makeStyles(theme) {
       paddingHorizontal: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: theme.colors.primary[700],
-      shadowOpacity: 0.18,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 3,
+      ...shadow(2, 'rgba(29, 78, 216, 0.22)'),
     },
     primaryActionText: {
       color: theme.colors.text.onPrimary,
@@ -643,7 +664,7 @@ function makeStyles(theme) {
       fontWeight: '800',
     },
     secondaryActionButton: {
-      minWidth: 108,
+      minWidth: isCompact ? 0 : 108,
       paddingHorizontal: 16,
       borderRadius: 16,
       borderWidth: 1,

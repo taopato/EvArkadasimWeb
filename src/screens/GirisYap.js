@@ -1,31 +1,56 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  ScrollView,
-  Platform,
-  Image,
+  View,
 } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
 import { authApi, houseApi } from '../services/api';
-import { useCommonStyles } from '../shared/ui/CommonStyles';
-import { useTheme } from '../shared/theme/ThemeProvider';
-import { TextInput as ThemedTextInput } from '../shared/ui/TextInput';
-import { Button as ThemedButton } from '../shared/ui/Button';
 import { GOOGLE_CLIENT_IDS } from '../shared/config/env';
 import { isValidEmail, normalizeEmail } from '../shared/validation/authValidation';
+import { useCommonStyles } from '../shared/ui/CommonStyles';
+import { Button as ThemedButton } from '../shared/ui/Button';
+import { TextInput as ThemedTextInput } from '../shared/ui/TextInput';
+import { useTheme } from '../shared/theme/ThemeProvider';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const LOGO = require('../assets/icon.png');
+
+const showLoginAlert = (navigation, title, message, options = {}) => {
+  const actions = [];
+
+  if (options.showSignup) {
+    actions.push({
+      text: 'Uye Ol',
+      onPress: () => navigation.navigate('SignupScreen'),
+    });
+  }
+
+  if (options.showForgotPassword) {
+    actions.push({
+      text: 'Sifremi Unuttum',
+      onPress: () =>
+        navigation.navigate(
+          'ForgotPasswordScreen',
+          options.email ? { email: options.email } : undefined
+        ),
+    });
+  }
+
+  actions.push({ text: 'Tamam', style: 'cancel' });
+  Alert.alert(title, message, actions);
+};
 
 const extractIdTokenFromUrlHash = () => {
   if (typeof window === 'undefined') return null;
@@ -36,35 +61,15 @@ const extractIdTokenFromUrlHash = () => {
   return params.get('id_token');
 };
 
-const GoogleLoginButton = ({
-  isExpoGo,
-  projectNameForProxy,
-  googleConfigured,
-  googleClientConfig,
-  theme,
-  login,
-}) => {
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const isWeb = Platform.OS === 'web';
+const GoogleLoginButton = ({ login, theme }) => {
+  const [loading, setLoading] = useState(false);
+  const isExpoGo = Constants?.appOwnership === 'expo';
+  const projectNameForProxy =
+    Constants?.expoConfig?.owner && Constants?.expoConfig?.slug
+      ? `@${Constants.expoConfig.owner}/${Constants.expoConfig.slug}`
+      : undefined;
 
-  const finishGoogleLogin = async (idToken) => {
-    const apiResponse = await authApi.googleLogin(idToken);
-    const payload = apiResponse?.data || {};
-    const token = payload?.token;
-    const user = payload?.user;
-
-    if (!token || !user) {
-        throw new Error('Google giriş yanıtı eksik.');
-    }
-
-    await login(user, token);
-
-    if (typeof window !== 'undefined') {
-      window.history.replaceState({}, '', `${window.location.origin}/`);
-    }
-  };
-
-  const googleRedirectUri = useMemo(() => {
+  const redirectUri = useMemo(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       return `${window.location.origin}/oauthredirect`;
     }
@@ -85,122 +90,115 @@ const GoogleLoginButton = ({
     });
   }, [isExpoGo, projectNameForProxy]);
 
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: googleClientConfig.clientId,
-    expoClientId: googleClientConfig.expoClientId,
-    webClientId: googleClientConfig.webClientId,
-    androidClientId: googleClientConfig.androidClientId,
-    iosClientId: googleClientConfig.iosClientId,
-    redirectUri: googleRedirectUri,
-    scopes: ['openid', 'profile', 'email'],
-  });
+  const googleConfig = useMemo(
+    () => ({
+      clientId: GOOGLE_CLIENT_IDS.web || GOOGLE_CLIENT_IDS.expo || undefined,
+      webClientId: GOOGLE_CLIENT_IDS.web || undefined,
+      androidClientId: GOOGLE_CLIENT_IDS.android || undefined,
+      iosClientId: GOOGLE_CLIENT_IDS.ios || undefined,
+      expoClientId: GOOGLE_CLIENT_IDS.expo || undefined,
+      redirectUri,
+      scopes: ['openid', 'profile', 'email'],
+    }),
+    [redirectUri]
+  );
 
-  const handleGoogleLogin = async () => {
-    try {
-      setGoogleLoading(true);
-      await promptAsync(
-        isWeb
-          ? {
-              windowName: '_self',
-            }
-          : undefined
-      );
-    } catch (error) {
-      Alert.alert('Google girişi başarısız', error?.message || 'İşlem başlatılamadı.');
-      setGoogleLoading(false);
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(googleConfig);
+
+  const finishGoogleLogin = async (idToken) => {
+    const apiResponse = await authApi.googleLogin(idToken);
+    const payload = apiResponse?.data || {};
+    if (!payload?.token || !payload?.user) {
+      throw new Error('Google girisi tamamlanamadi.');
+    }
+
+    await login(payload.user, payload.token);
+
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', `${window.location.origin}/`);
     }
   };
 
   useEffect(() => {
-    const runGoogleLogin = async () => {
+    const run = async () => {
       if (response?.type !== 'success') {
         if (response?.type && response.type !== 'dismiss') {
-          setGoogleLoading(false);
+          setLoading(false);
         }
         return;
       }
 
-      const idToken = response?.params?.id_token || response?.authentication?.idToken;
-      if (!idToken) {
-        setGoogleLoading(false);
-        Alert.alert('Google girişi başarısız', 'Google kimlik belirteci alınamadı.');
-        return;
-      }
-
       try {
+        const idToken = response?.params?.id_token || response?.authentication?.idToken;
+        if (!idToken) throw new Error('Google kimlik bilgisi alinamadi.');
         await finishGoogleLogin(idToken);
       } catch (error) {
         Alert.alert(
-          'Google girişi başarısız',
-          error?.response?.data?.message || error?.message || 'Sunucuya giriş yapılamadı.'
+          'Google Girisi Basarisiz',
+          error?.response?.data?.message || error?.message || 'Google ile giris yapilamadi.'
         );
       } finally {
-        setGoogleLoading(false);
+        setLoading(false);
       }
     };
 
-    runGoogleLogin();
-  }, [response, login]);
+    run();
+  }, [response]);
 
   useEffect(() => {
-    if (!isWeb) return;
-
+    if (Platform.OS !== 'web') return;
     const idToken = extractIdTokenFromUrlHash();
     if (!idToken) return;
 
     let cancelled = false;
-
-    const runGoogleLoginFromHash = async () => {
+    const run = async () => {
       try {
-        setGoogleLoading(true);
+        setLoading(true);
         await finishGoogleLogin(idToken);
       } catch (error) {
         if (!cancelled) {
           Alert.alert(
-            'Google girişi başarısız',
-            error?.response?.data?.message || error?.message || 'Sunucuya giriş yapılamadı.'
+            'Google Girisi Basarisiz',
+            error?.response?.data?.message || error?.message || 'Google ile giris yapilamadi.'
           );
         }
       } finally {
-        if (!cancelled) {
-          setGoogleLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     };
 
-    runGoogleLoginFromHash();
-
+    run();
     return () => {
       cancelled = true;
     };
-  }, [isWeb, login]);
+  }, []);
 
   return (
-    <>
-      <TouchableOpacity
-        style={[
-          styles.googleButton,
-          {
-            borderColor: theme.colors.neutral[200],
-            backgroundColor: theme.colors.background,
-          },
-        ]}
-        onPress={handleGoogleLogin}
-        disabled={!request || googleLoading}
-        activeOpacity={0.85}
-      >
-        <Text style={[styles.googleIcon, { color: theme.colors.primary[600] }]}>G</Text>
-        <Text style={[styles.googleText, { color: theme.colors.text.primary }]}>
-          {googleLoading ? 'Google ile bağlanılıyor...' : 'Google ile giriş yap'}
-        </Text>
-      </TouchableOpacity>
-
-      {googleConfigured && isExpoGo && (
-        <Text style={[styles.helper, { color: theme.colors.warning[600] }]}>
-          Expo Go ile denemek için ayrıca GOOGLE_EXPO_CLIENT_ID tanımlanmalı.
-        </Text>
-      )}
-    </>
+    <TouchableOpacity
+      style={[
+        styles.googleButton,
+        {
+          borderColor: theme.colors.neutral[200],
+          backgroundColor: theme.colors.background,
+        },
+      ]}
+      onPress={async () => {
+        try {
+          setLoading(true);
+          await promptAsync(Platform.OS === 'web' ? { windowName: '_self' } : undefined);
+        } catch (error) {
+          setLoading(false);
+          Alert.alert('Google Girisi Basarisiz', error?.message || 'Google islemi baslatilamadi.');
+        }
+      }}
+      disabled={!request || loading}
+      activeOpacity={0.85}
+    >
+      <Text style={[styles.googleIcon, { color: theme.colors.primary[600] }]}>G</Text>
+      <Text style={[styles.googleText, { color: theme.colors.text.primary }]}>
+        {loading ? 'Google ile baglaniliyor...' : 'Google ile giris yap'}
+      </Text>
+    </TouchableOpacity>
   );
 };
 
@@ -212,40 +210,13 @@ const GirisYap = ({ navigation, route }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const isExpoGo = Constants?.appOwnership === 'expo';
-  const projectNameForProxy = Constants?.expoConfig?.owner && Constants?.expoConfig?.slug
-    ? `@${Constants.expoConfig.owner}/${Constants.expoConfig.slug}`
-    : undefined;
-  const googleEnabledForCurrentPlatform = Platform.OS === 'web'
-    ? Boolean(GOOGLE_CLIENT_IDS.web)
-    : isExpoGo
-      ? Boolean(GOOGLE_CLIENT_IDS.expo || GOOGLE_CLIENT_IDS.web)
-      : Boolean(
-          GOOGLE_CLIENT_IDS.android ||
-            GOOGLE_CLIENT_IDS.ios ||
-            GOOGLE_CLIENT_IDS.expo ||
-            GOOGLE_CLIENT_IDS.web
-        );
-
-  const googleConfigured = useMemo(
-    () =>
-      Boolean(
-        GOOGLE_CLIENT_IDS.web ||
-          GOOGLE_CLIENT_IDS.android ||
-          GOOGLE_CLIENT_IDS.ios ||
-          GOOGLE_CLIENT_IDS.expo
-      ),
-    []
-  );
 
   const invitationToken = route?.params?.invitationToken || '';
   const invitationHouseId = Number(route?.params?.invitationHouseId) || 0;
   const invitationEmail = route?.params?.invitationEmail || '';
 
   const finalizeInvitationIfNeeded = async () => {
-    if (!invitationToken) {
-      return;
-    }
+    if (!invitationToken) return;
 
     const response = await houseApi.acceptInvitation(invitationToken);
     const joinedHouseId = Number(response?.data?.houseId) || invitationHouseId;
@@ -253,128 +224,79 @@ const GirisYap = ({ navigation, route }) => {
     if (joinedHouseId) {
       try {
         const houseResponse = await houseApi.getById(joinedHouseId);
-        const house = houseResponse?.data;
-        await setDefaultHouseId(joinedHouseId, house?.name);
+        await setDefaultHouseId(joinedHouseId, houseResponse?.data?.name);
       } catch {
         await setDefaultHouseId(joinedHouseId);
       }
     }
 
-    Alert.alert('Başarılı', response?.data?.message || 'Davetiniz kabul edildi.');
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', `${window.location.origin}/`);
+    }
   };
-
-  const googleClientConfig = useMemo(
-    () => ({
-      expoClientId: GOOGLE_CLIENT_IDS.expo || undefined,
-      webClientId: GOOGLE_CLIENT_IDS.web || undefined,
-      androidClientId: GOOGLE_CLIENT_IDS.android || undefined,
-      iosClientId: GOOGLE_CLIENT_IDS.ios || undefined,
-      clientId: GOOGLE_CLIENT_IDS.web || GOOGLE_CLIENT_IDS.expo || undefined,
-    }),
-    []
-  );
 
   const handleLogin = async () => {
     const normalizedEmail = normalizeEmail(email);
 
     if (!normalizedEmail || !password.trim()) {
-      setErrorMessage('Lütfen e-posta ve şifrenizi girin.');
-      Alert.alert('Hata', 'Lütfen e-posta ve şifrenizi girin.');
+      const message = 'Lutfen e-posta ve sifrenizi girin.';
+      setErrorMessage(message);
+      showLoginAlert(navigation, 'Eksik Bilgi', message);
       return;
     }
 
     if (!isValidEmail(normalizedEmail)) {
-      setErrorMessage('Lütfen geçerli bir e-posta adresi girin.');
-      Alert.alert('Hata', 'Lütfen geçerli bir e-posta adresi girin.');
+      const message = 'Lutfen gecerli bir e-posta adresi girin.';
+      setErrorMessage(message);
+      showLoginAlert(navigation, 'Gecersiz E-posta', message);
       return;
     }
 
     setErrorMessage('');
     setLoading(true);
+
     try {
-      const response = await authApi.login({
-        email: normalizedEmail,
-        password,
-      });
-      const raw = response?.data || {};
-      const data = raw?.data ?? raw ?? {};
+      const response = await authApi.login({ email: normalizedEmail, password });
+      const payload = response?.data || {};
+      const token = payload?.token;
+      const user = payload?.user;
 
-      const getDeep = (obj, predicate) => {
-        const stack = [obj];
-        while (stack.length) {
-          const current = stack.pop();
-          if (!current || typeof current !== 'object') continue;
-          if (predicate(current)) return current;
-          for (const key of Object.keys(current)) {
-            const value = current[key];
-            if (value && typeof value === 'object') stack.push(value);
-          }
-        }
-        return null;
-      };
-
-      const findValueByKeyList = (obj, keys) => {
-        const lowered = keys.map((key) => key.toLowerCase());
-        const node = getDeep(obj, (candidate) =>
-          Object.keys(candidate).some((key) => lowered.includes(key.toLowerCase()))
-        );
-
-        if (!node) return undefined;
-        for (const key of Object.keys(node)) {
-          if (lowered.includes(key.toLowerCase())) return node[key];
-        }
-        return undefined;
-      };
-
-      const token = findValueByKeyList(data, ['token', 'accessToken', 'jwt', 'jwtToken']);
-      let user = findValueByKeyList(data, ['user', 'userDto', 'account', 'profile', 'userInfo']);
-
-      if (!user) {
-        const userId = findValueByKeyList(data, ['userId', 'id']);
-        const fullName = findValueByKeyList(data, ['fullName', 'name']);
-        const emailFromApi = findValueByKeyList(data, ['email', 'mail']);
-        if (userId || fullName || emailFromApi) {
-          user = {
-            id: userId ?? 0,
-            fullName: fullName ?? normalizedEmail,
-            email: emailFromApi ?? normalizedEmail,
-          };
-        }
+      if (!token || !user) {
+        throw new Error(payload?.raw?.message || 'Giris yapilamadi.');
       }
 
-      if (token && user) {
-        setErrorMessage('');
-        await login(user, token);
-        await finalizeInvitationIfNeeded();
-        return;
+      await login(user, token);
+      await finalizeInvitationIfNeeded();
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', `${window.location.origin}/`);
       }
-
-      setErrorMessage(raw?.message || 'Lütfen bilgilerinizi kontrol edin.');
-      Alert.alert('Giriş başarısız', raw?.message || 'Lütfen bilgilerinizi kontrol edin.');
+      return;
     } catch (error) {
       const status = error?.response?.status;
-      const validationErrors = error?.response?.data?.errors;
-      const raw =
-        error?.response?.data?.message || error?.response?.data || error?.message || '';
-      const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
-      const lower = text.toLowerCase();
+      const messageFromApi = error?.response?.data?.message || error?.message || '';
+      const lower = String(messageFromApi).toLowerCase();
 
-      let message = 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
-      if (Array.isArray(validationErrors) && validationErrors.length > 0) {
-        message = validationErrors.map((item) => item?.message).filter(Boolean).join('\n');
-      } else
-      if (status === 401 && (lower.includes('kayitli bir kullanici bulunamadi') || lower.includes('uye olun'))) {
-        message = 'Bu e-posta ile kayıtlı bir hesap bulunamadı. Lütfen önce üye olun.';
-      } else if (status === 401 && (lower.includes('sifreniz yanlis') || lower.includes('wrong password'))) {
-        message = 'Şifreniz yanlış. Lütfen tekrar deneyin.';
+      let message = 'Giris yapilamadi. Lutfen bilgilerinizi kontrol edin.';
+      let alertOptions = { email: normalizedEmail };
+
+      if (
+        status === 401 &&
+        (lower.includes('kayitli bir kullanici bulunamadi') || lower.includes('once uye olun'))
+      ) {
+        message = 'Bu e-posta ile kayitli bir hesap bulunamadi. Isterseniz hemen uye olabilirsiniz.';
+        alertOptions = { ...alertOptions, showSignup: true };
+      } else if (status === 401 && lower.includes('sifreniz yanlis')) {
+        message = 'Sifreniz yanlis. Tekrar deneyebilir veya sifrenizi sifirlayabilirsiniz.';
+        alertOptions = { ...alertOptions, showForgotPassword: true };
       } else if (status === 401) {
-        message = 'E-posta veya şifre hatalı.';
-      } else if (text) {
-        message = text;
+        message = 'E-posta veya sifre hatali. Sifrenizi unuttuysaniz sifirlamayi deneyin.';
+        alertOptions = { ...alertOptions, showForgotPassword: true };
+      } else if (messageFromApi) {
+        message = String(messageFromApi);
       }
 
       setErrorMessage(message);
-      Alert.alert('Giriş başarısız', message);
+      showLoginAlert(navigation, 'Giris Basarisiz', message, alertOptions);
     } finally {
       setLoading(false);
     }
@@ -391,30 +313,13 @@ const GirisYap = ({ navigation, route }) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View
-          style={[
-            CommonStyles.content,
-            styles.content,
-            { backgroundColor: theme.colors.background },
-          ]}
-        >
+        <View style={[CommonStyles.content, styles.content, { backgroundColor: theme.colors.background }]}>
           <View style={styles.hero}>
-            <View
-              style={[
-                styles.logoWrap,
-                {
-                  backgroundColor: theme.colors.primary[50],
-                  borderColor: theme.colors.primary[200],
-                },
-              ]}
-            >
+            <View style={styles.logoWrap}>
               <Image source={LOGO} style={styles.logo} resizeMode="contain" />
             </View>
-            <Text style={[styles.heading, { color: theme.colors.text.primary }]}>
-              Ev Arkadaşım
-            </Text>
             <Text style={[styles.subheading, { color: theme.colors.text.secondary }]}>
-              Harcamaları paylaş, borçları gör, ödemeleri tek yerden yönet.
+              Harcamalari paylas, borclari gor, odemeleri tek yerden yonet.
             </Text>
           </View>
 
@@ -436,14 +341,16 @@ const GirisYap = ({ navigation, route }) => {
               autoCapitalize="none"
               keyboardType="email-address"
             />
+
             {!!invitationEmail && (
               <Text style={[styles.helper, { color: theme.colors.primary[700], marginTop: -4, marginBottom: 10 }]}>
-                Bu davet {invitationEmail} adresi için gönderildi. Giriş yaptığınızda eve otomatik katılacaksınız.
+                Bu davet {invitationEmail} adresi icin gonderildi. Giris yaptiginizda eve otomatik katilacaksiniz.
               </Text>
             )}
+
             <ThemedTextInput
               style={{ marginBottom: 12 }}
-              placeholder="Şifre"
+              placeholder="Sifre"
               secureTextEntry
               value={password}
               onChangeText={setPassword}
@@ -461,41 +368,20 @@ const GirisYap = ({ navigation, route }) => {
                   },
                 ]}
               >
-                <Text style={[styles.errorText, { color: theme.colors.error[700] }]}>
-                  {errorMessage}
-                </Text>
+                <Text style={[styles.errorText, { color: theme.colors.error[700] }]}>{errorMessage}</Text>
               </View>
             )}
 
-            <ThemedButton title="Giriş Yap" onPress={handleLogin} loading={loading} />
+            <ThemedButton title="Giris Yap" onPress={handleLogin} loading={loading} />
 
-            {!googleEnabledForCurrentPlatform && (
-              <Text style={[styles.helper, { color: theme.colors.warning[600] }]}>
-                Google girişi bu ortam için henüz yapılandırılmamış. Ekranın geri kalanı sorunsuz çalışmaya devam eder.
-              </Text>
-            )}
+            <GoogleLoginButton login={login} theme={theme} />
 
-            {googleEnabledForCurrentPlatform && (
-              <GoogleLoginButton
-                isExpoGo={isExpoGo}
-                projectNameForProxy={projectNameForProxy}
-              googleConfigured={googleConfigured}
-              googleClientConfig={googleClientConfig}
-              theme={theme}
-              login={login}
-            />
-          )}
-
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPasswordScreen')}>
-              <Text style={[styles.link, { color: theme.colors.text.secondary }]}>
-                Şifremi unuttum
-              </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPasswordScreen', email ? { email } : undefined)}>
+              <Text style={[styles.link, { color: theme.colors.text.secondary }]}>Sifremi unuttum</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('SignupScreen')}>
-              <Text style={[styles.link, { color: theme.colors.primary[600] }]}>
-                Hesabın yok mu? Kayıt ol
-              </Text>
+              <Text style={[styles.link, { color: theme.colors.primary[600] }]}>Hesabin yok mu? Kayit ol</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -517,22 +403,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   logoWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: 28,
-    borderWidth: 1,
+    width: 320,
+    height: 320,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 0,
   },
   logo: {
-    width: 72,
-    height: 72,
-  },
-  heading: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 8,
+    width: 600,
+    height: 600,
   },
   subheading: {
     fontSize: 15,

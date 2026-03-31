@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import Constants from 'expo-constants';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import { useAuth } from '../context/AuthContext';
@@ -15,7 +15,12 @@ export default function SettingsScreen({ navigation }) {
   );
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.heroCard}>
         <Text style={styles.eyebrow}>Hesap</Text>
         <Text style={styles.title}>Ayarlar</Text>
@@ -26,7 +31,9 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.infoGrid}>
           <View style={styles.infoBox}>
             <Text style={styles.infoLabel}>Aktif ev</Text>
-            <Text style={styles.infoValue}>{user?.defaultHouseName || (user?.defaultHouseId ? `Ev #${user.defaultHouseId}` : 'Seçilmedi')}</Text>
+            <Text style={styles.infoValue}>
+              {user?.defaultHouseName || (user?.defaultHouseId ? `Ev #${user.defaultHouseId}` : 'Seçilmedi')}
+            </Text>
           </View>
           <View style={styles.infoBox}>
             <Text style={styles.infoLabel}>Google giriş</Text>
@@ -38,7 +45,9 @@ export default function SettingsScreen({ navigation }) {
           </View>
           <View style={styles.infoBox}>
             <Text style={styles.infoLabel}>API</Text>
-            <Text style={styles.infoValue} numberOfLines={1}>{BASE_URL}</Text>
+            <Text style={styles.infoValue} numberOfLines={1}>
+              {BASE_URL}
+            </Text>
           </View>
         </View>
 
@@ -82,13 +91,13 @@ export default function SettingsScreen({ navigation }) {
         <Text style={styles.logoutDesc}>Oturumu bu cihazdan kapat</Text>
       </TouchableOpacity>
 
-      <View style={styles.signatureWrap} pointerEvents="none">
+      <View style={styles.signatureWrap}>
         <Text style={styles.signatureText}>
-          Bu bir Tarık Çetintürk projesidir. Backend, frontend ve DevOps süreçlerinin tamamı
-          tek başına geliştirilmiştir.
+          Bu bir Tarık Çetintürk projesidir. Backend, frontend ve DevOps süreçlerinin tamamı tek
+          başına geliştirilmiştir.
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -96,8 +105,11 @@ const makeStyles = (theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      padding: 16,
       backgroundColor: theme.colors.background,
+    },
+    content: {
+      padding: 16,
+      paddingBottom: 32,
     },
     heroCard: {
       padding: 18,
@@ -205,6 +217,7 @@ const makeStyles = (theme) =>
       fontSize: 13,
     },
     signatureWrap: {
+      pointerEvents: 'none',
       marginTop: 14,
       paddingHorizontal: 10,
     },
