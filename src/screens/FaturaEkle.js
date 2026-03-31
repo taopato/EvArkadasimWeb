@@ -1,75 +1,102 @@
-// src/screens/AddBillScreen.js
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Animated, Platform, TextInput, Keyboard
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+  Animated,
+  Platform,
+  TextInput,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { KeyboardAvoidingView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../shared/theme/ThemeProvider';
-
 import { useAuth } from '../context/AuthContext';
 import { houseApi, expensesApi } from '../services/api';
 import Toast from '../components/Toast';
 import { toExpenseCategory } from '../constants/ExpenseEnums';
-
-const getCategoryDisplayName = (category) => {
-  const categoryMap = {
-    Electricity: 'Elektrik', Water: 'Su', Internet: 'İnternet', Rent: 'Kira', Gas: 'Doğalgaz',
-    Market: 'Market', Food: 'Yemek', Other: 'Diğer',
-    0: 'Kira', 1: 'İnternet', 2: 'Elektrik', 3: 'Su', 4: 'Doğalgaz', 5: 'Yemek', 99: 'Diğer',
-  };
-  return categoryMap[category] || category;
-};
+import eventBus from '../shared/events/bus';
 
 const BILL_TYPES = [
-  { key: 'Water', label: '💧 Su', isFixed: false, description: 'Değişken harcama - Aylık değişir' },
-  { key: 'Electricity', label: '⚡ Elektrik', isFixed: false, description: 'Değişken harcama - Aylık değişir' },
-  { key: 'Rent', label: '🏠 Kira', isFixed: true, description: 'Sabit harcama - Her ay aynı' },
-  { key: 'Gas', label: '🔥 Doğalgaz', isFixed: false, description: 'Değişken harcama - Aylık değişir' },
-  { key: 'Other', label: '📄 Diğer', isFixed: null, description: 'Seçim yapın - Düzenli/Düzensiz' },
-  { key: 'Internet', label: '🌐 İnternet', isFixed: true, description: 'Sabit harcama - Her ay aynı' },
+  { key: 'Water', label: 'Su', tone: 'variable', description: 'Aylık değişken gider' },
+  { key: 'Electricity', label: 'Elektrik', tone: 'variable', description: 'Aylık değişken gider' },
+  { key: 'Rent', label: 'Kira', tone: 'fixed', description: 'Sabit aylık gider' },
+  { key: 'Gas', label: 'Doğalgaz', tone: 'variable', description: 'Aylık değişken gider' },
+  { key: 'Internet', label: 'İnternet', tone: 'fixed', description: 'Sabit aylık gider' },
+  { key: 'Other', label: 'Diğer', tone: 'neutral', description: 'Genel fatura kaydı' },
 ];
 
-const AddBillScreen = ({ route, navigation }) => {
+const displayName = (category) => {
+  const map = {
+    Water: 'Su',
+    Electricity: 'Elektrik',
+    Rent: 'Kira',
+    Gas: 'Doğalgaz',
+    Internet: 'İnternet',
+    Other: 'Diğer',
+    0: 'Kira',
+    1: 'İnternet',
+    2: 'Elektrik',
+    3: 'Su',
+    4: 'Market',
+    5: 'Yemek',
+    99: 'Diğer',
+  };
+  return map[category] || String(category || 'Su');
+};
+
+const normalizeBillTypeKey = (value) => {
+  const raw = String(value ?? '').toLowerCase();
+  if (/(water|su)/.test(raw)) return 'Water';
+  if (/(electricity|elektrik)/.test(raw)) return 'Electricity';
+  if (/(rent|kira)/.test(raw)) return 'Rent';
+  if (/(gas|doğalgaz|dogalgaz|doalgaz)/.test(raw)) return 'Gas';
+  if (/internet/.test(raw)) return 'Internet';
+  if (/(other|diğer|diger)/.test(raw)) return 'Other';
+  return 'Water';
+};
+
+const normalizeMembers = (raw) =>
+  (Array.isArray(raw) ? raw : [])
+    .map((m) => ({
+      userId: Number(m.userId ?? m.user?.id ?? NaN),
+      fullName: m.fullName ?? m.name ?? m.user?.fullName ?? 'Kullanıcı',
+    }))
+    .filter((m) => Number.isInteger(m.userId) && m.userId > 0);
+
+export default function FaturaEkle({ route, navigation }) {
   const { houseId, houseName, billId, isEditing } = route.params || {};
+  const editingMode = isEditing === true || String(isEditing).toLowerCase() === 'true';
   const { user } = useAuth();
   const { theme } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState([]);
-
-  const [amount, setAmount] = useState('100.00');
-  const [billDate, setBillDate] = useState(''); // YYYY-MM-DD
-  const [month, setMonth] = useState('');       // YYYY-MM
+  const [amount, setAmount] = useState('');
+  const [billDate, setBillDate] = useState('');
+  const [month, setMonth] = useState('');
   const [note, setNote] = useState('');
   const [billType, setBillType] = useState('Water');
   const [responsibleUserId, setResponsibleUserId] = useState(null);
-  const [isRecurring, setIsRecurring] = useState(false);
-
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
-
   const [fadeAnim] = useState(new Animated.Value(0));
-  const [slideAnim] = useState(new Animated.Value(50));
+  const [slideAnim] = useState(new Animated.Value(24));
 
   const showToast = (message, type = 'success') => setToast({ visible: true, message, type });
-  const hideToast = () => setToast(prev => ({ ...prev, visible: false }));
-
-  const normalizeMembers = (raw) =>
-    (Array.isArray(raw) ? raw : [])
-      .map(m => ({
-        userId: Number(m.userId ?? m.user?.id ?? NaN),
-        fullName: m.fullName ?? m.name ?? m.user?.fullName ?? 'Kullanıcı'
-      }))
-      .filter(m => Number.isInteger(m.userId) && m.userId > 0);
+  const hideToast = () => setToast((prev) => ({ ...prev, visible: false }));
 
   useEffect(() => {
     if (!houseId) {
-      showToast('Gerekli bilgiler eksik', 'error');
+      showToast('Ev bilgisi eksik', 'error');
       navigation.goBack();
       return;
     }
+
     const now = new Date();
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -79,38 +106,40 @@ const AddBillScreen = ({ route, navigation }) => {
     setMonth(`${y}-${m}`);
 
     fetchMembers();
-    if (isEditing && billId) fetchBillData();
+    if (editingMode && billId) {
+      fetchBillData();
+    }
 
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: Platform.OS !== 'web' }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 280, useNativeDriver: Platform.OS !== 'web' }),
     ]).start();
-  }, [houseId, billId, isEditing]);
+  }, [houseId, billId, editingMode]);
 
   useFocusEffect(
-    React.useCallback(() => { if (houseId) fetchMembers(); }, [houseId])
+    React.useCallback(() => {
+      if (houseId) {
+        fetchMembers();
+      }
+    }, [houseId])
   );
 
   useEffect(() => {
-    const selected = BILL_TYPES.find(t => t.key === billType);
-    if (!selected) return;
-    if (selected.isFixed === true) { setIsRecurring(true);  showToast(`${selected.label} - ${selected.description}`, 'info'); }
-    else if (selected.isFixed === false) { setIsRecurring(false); showToast(`${selected.label} - ${selected.description}`, 'info'); }
-    else { setIsRecurring(false); }
-  }, [billType]);
-
-  useEffect(() => {
-    if (billDate && /^\d{4}-\d{2}-\d{2}$/.test(billDate)) setMonth(billDate.slice(0, 7));
+    if (billDate && /^\d{4}-\d{2}-\d{2}$/.test(billDate)) {
+      setMonth(billDate.slice(0, 7));
+    }
   }, [billDate]);
 
   const fetchMembers = async () => {
     try {
       const res = await houseApi.getMembers(houseId);
-      const list = normalizeMembers(res?.data);
+      const list = normalizeMembers(res?.data?.data || res?.data);
       setMembers(list);
-      const me = list.find(x => x.userId === Number(user?.id));
-      if (me) setResponsibleUserId(me.userId);
-    } catch (err) {
+      if (!responsibleUserId) {
+        const me = list.find((x) => x.userId === Number(user?.id));
+        if (me) setResponsibleUserId(me.userId);
+      }
+    } catch {
       showToast('Ev üyeleri alınamadı', 'error');
     }
   };
@@ -119,18 +148,20 @@ const AddBillScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
       const response = await expensesApi.getById(billId);
-      const bill = response?.data;
+      const bill = response?.data?.data || response?.data;
       if (!bill) return;
 
-      setAmount(String(bill.amount ?? bill.tutar ?? 0));
-      const pDate = bill.postDate ? String(bill.postDate).slice(0, 10) : '';
-      setBillDate(pDate || billDate);
-      setMonth((pDate || billDate).slice(0, 7));
-      setNote(bill.note ?? '');
-      setBillType(typeof bill.category === 'number' ? getCategoryDisplayName(bill.category) : (bill.category || 'Water'));
-      setResponsibleUserId(bill.odeyenUserId || null);
+      setAmount(String(bill.tutar ?? bill.amount ?? ''));
+      const postDate = String(bill.postDate ?? bill.kayitTarihi ?? '').slice(0, 10);
+      if (postDate) {
+        setBillDate(postDate);
+        setMonth(postDate.slice(0, 7));
+      }
+      setNote(String(bill.note ?? bill.description ?? bill.aciklama ?? ''));
+      setBillType(normalizeBillTypeKey(bill.category));
+      setResponsibleUserId(Number(bill.odeyenUserId ?? bill.payerUserId ?? 0) || null);
     } catch {
-      showToast('Fatura verileri alınamadı', 'error');
+      showToast('Fatura bilgileri alınamadı', 'error');
     } finally {
       setLoading(false);
     }
@@ -138,160 +169,190 @@ const AddBillScreen = ({ route, navigation }) => {
 
   const validateForm = () => {
     const money = parseFloat(String(amount).replace(',', '.'));
-    if (Number.isNaN(money) || money <= 0) { showToast('Geçerli bir tutar girin', 'warning'); return { ok: false }; }
-    if (!billDate || !/^\d{4}-\d{2}-\d{2}$/.test(billDate)) { showToast('Tarih formatı YYYY-MM-DD olmalı', 'warning'); return { ok: false }; }
-    if (!responsibleUserId) { showToast('Ödeyen kişi seçin', 'warning'); return { ok: false }; }
-    const memberIds = new Set(members.map(m => m.userId));
-    if (!memberIds.has(Number(responsibleUserId))) { showToast('Seçilen kişi ev üyesi değil', 'error'); return { ok: false }; }
+    if (Number.isNaN(money) || money <= 0) {
+      showToast('Geçerli bir tutar gir', 'warning');
+      return { ok: false };
+    }
+    if (!billDate || !/^\d{4}-\d{2}-\d{2}$/.test(billDate)) {
+      showToast('Tarih formatı YYYY-MM-DD olmalı', 'warning');
+      return { ok: false };
+    }
+    if (!responsibleUserId) {
+      showToast('Ödeyen kişiyi seç', 'warning');
+      return { ok: false };
+    }
     return { ok: true, money };
   };
 
-  const handleCreateBill = async () => {
+  const goToBills = () => {
+    navigation.replace('BillsOverviewScreen', { houseId, houseName });
+  };
+
+  const handleSubmit = async () => {
     Keyboard.dismiss();
-    const v = validateForm();
-    if (!v.ok) return;
+    const validation = validateForm();
+    if (!validation.ok) return;
 
     setLoading(true);
     try {
-      if (isEditing && billId) {
-        const safeTur = `${getCategoryDisplayName(billType)} ${month}`.slice(0, 30);
-        const updateData = {
-          tur: safeTur,
+      const safeTitle = `${displayName(billType)} ${month}`.slice(0, 30);
+      const desc = (note?.trim() || `${displayName(billType)} • ${billDate}`).slice(0, 250);
+
+      if (editingMode && billId) {
+        await expensesApi.update(billId, {
+          tur: safeTitle,
           category: toExpenseCategory(billType),
-          tutar: v.money,
+          tutar: validation.money,
           postDate: `${billDate}T00:00:00`,
           dueDate: `${billDate}T00:00:00`,
-          // update’te Description zorunlu değilse göndermeye gerek yok
+          description: desc,
+          Description: desc,
+          note: desc,
+          Aciklama: desc,
           splitPolicy: 0,
-        };
-        await expensesApi.update(billId, updateData);
+        });
+        try { eventBus.emit('expenses:updated', { houseId: Number(houseId) }); } catch {}
         showToast('Fatura güncellendi', 'success');
-        navigation.goBack();
-      } else {
-        await handleCreateIrregularExpense(v.money);
+        goToBills();
+        return;
       }
-    } catch (e) {
-      const serverText = String(e?.response?.data ?? e?.message ?? '');
-      showToast(serverText || 'Beklenmeyen hata', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleCreateIrregularExpense = async (moneyValue) => {
-    try {
       const payerId = Number(responsibleUserId);
       const creatorId = Number(user?.id ?? user?.userId ?? payerId ?? 0);
-      const house = Number(houseId);
-
-      const safeTur = `${getCategoryDisplayName(billType)} ${month}`.slice(0, 30);
-      const desc = `${getCategoryDisplayName(billType)} • ${billDate}`; // 🔸 Description NOT NULL
-
-      const payload = {
-        tur: safeTur,
+      await expensesApi.createIrregular({
+        tur: safeTitle,
         category: toExpenseCategory(billType),
-        tutar: moneyValue,
-        houseId: house,
+        tutar: validation.money,
+        houseId: Number(houseId),
         odeyenUserId: payerId,
         kaydedenUserId: creatorId > 0 ? creatorId : payerId,
         postDate: `${billDate}T00:00:00`,
         dueDate: `${billDate}T00:00:00`,
         splitPolicy: 0,
         personalItems: [],
-        // 🔸 zorunlu alan:
         description: desc,
         Description: desc,
         Aciklama: desc,
-      };
+      });
 
-      await expensesApi.createIrregular(payload);
-
-      try { (await import('../shared/events/bus')).default.emit('expenses:updated', { houseId: house }); } catch {}
-
-      showToast('Kayıt oluşturuldu', 'success');
-      if (navigation?.canGoBack?.()) navigation.goBack();
-      else navigation.navigate('Expenses', { houseId });
-    } catch (e) {
-      const serverText = String(e?.response?.data ?? e?.message ?? '');
-      showToast(serverText || 'Oluşturma hatası', 'error');
-      throw e;
+      try { eventBus.emit('expenses:updated', { houseId: Number(houseId) }); } catch {}
+      showToast('Fatura kaydedildi', 'success');
+      goToBills();
+    } catch (error) {
+      const serverText = String(error?.response?.data?.message || error?.response?.data || error?.message || 'Beklenmeyen hata');
+      showToast(serverText, 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={80}>
-      <LinearGradient colors={[theme.colors.primary[600], theme.colors.primary[500]]} style={{ flex: 1 }}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={84}>
+      <LinearGradient colors={[theme.colors.background, theme.colors.neutral?.[50] || theme.colors.background]} style={styles.gradient}>
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{isEditing ? 'Düzenle' : 'Yeni'} Fatura Oluştur</Text>
-            <Text style={styles.subtitle}>{houseName} - {getCategoryDisplayName(billType)}</Text>
-          </View>
-
-          <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>💰 Tutar (₺)</Text>
-              <TextInput style={styles.textInput} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="Örn: 100.00" />
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.hero}>
+              <View style={styles.heroBadge}>
+                <Text style={styles.heroBadgeText}>{editingMode ? 'DÜZENLE' : 'YENİ FATURA'}</Text>
+              </View>
+              <Text style={styles.heroTitle}>{editingMode ? 'Fatura Düzenle' : 'Fatura Ekle'}</Text>
+              <Text style={styles.heroSubtitle}>{houseName || 'Ev grubu'} • {displayName(billType)}</Text>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>📅 Tarih (YYYY-MM-DD)</Text>
-              <TextInput style={styles.textInput} value={billDate} onChangeText={setBillDate} placeholder="YYYY-MM-DD" maxLength={10} autoCapitalize="none" />
-              <Text style={styles.hint}>Dönem: {month || '-'}</Text>
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Temel Bilgiler</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Tutar</Text>
+                <TextInput
+                  style={styles.input}
+                  value={amount}
+                  onChangeText={setAmount}
+                  keyboardType="decimal-pad"
+                  placeholder="Örn: 700.00"
+                  placeholderTextColor={theme.colors.text.disabled}
+                />
+              </View>
+
+              <View style={styles.row}>
+                <View style={[styles.inputGroup, styles.half]}>
+                  <Text style={styles.label}>Tarih</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={billDate}
+                    onChangeText={setBillDate}
+                    placeholder="YYYY-MM-DD"
+                    maxLength={10}
+                    autoCapitalize="none"
+                    placeholderTextColor={theme.colors.text.disabled}
+                  />
+                </View>
+                <View style={[styles.inputGroup, styles.half]}>
+                  <Text style={styles.label}>Dönem</Text>
+                  <View style={styles.readonlyBox}>
+                    <Text style={styles.readonlyText}>{month || '-'}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Not</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={note}
+                  onChangeText={setNote}
+                  multiline
+                  placeholder="İsteğe bağlı kısa açıklama"
+                  placeholderTextColor={theme.colors.text.disabled}
+                />
+              </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>📄 Fatura Türü</Text>
-              <View style={styles.pickerContainer}>
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Fatura Türü</Text>
+              <View style={styles.chips}>
                 {BILL_TYPES.map((type) => {
                   const selected = billType === type.key;
                   return (
                     <TouchableOpacity
                       key={type.key}
-                      style={[styles.billTypeButton, selected && styles.selectedBillTypeButton, type.isFixed === true && styles.fixedBillTypeButton, type.isFixed === false && styles.variableBillTypeButton]}
+                      style={[styles.chip, selected && styles.chipSelected]}
                       onPress={() => setBillType(type.key)}
-                      activeOpacity={0.8}
+                      activeOpacity={0.84}
                     >
-                      <Text style={[styles.billTypeButtonText, selected && styles.selectedBillTypeButtonText, type.isFixed === true && styles.fixedBillTypeButtonText, type.isFixed === false && styles.variableBillTypeButtonText]}>
-                        {type.label}
-                      </Text>
-                      <Text style={styles.billTypeDescription}>{type.description}</Text>
+                      <Text style={[styles.chipTitle, selected && styles.chipTitleSelected]}>{type.label}</Text>
+                      <Text style={[styles.chipMeta, selected && styles.chipMetaSelected]}>{type.description}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>📝 Not (opsiyonel)</Text>
-              <TextInput style={[styles.textInput, styles.textArea]} value={note} onChangeText={setNote} multiline placeholder="İstersen not gir" />
-              <Text style={styles.hint}>Not versek bile Description ayrıca gönderiliyor.</Text>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>👤 Ödeyen Kişi</Text>
-              <View style={styles.pickerContainer}>
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Ödeyen Kişi</Text>
+              <View style={styles.memberWrap}>
                 {members.map((member) => {
                   const selected = Number(member.userId) === Number(responsibleUserId);
                   return (
                     <TouchableOpacity
                       key={member.userId}
-                      style={[styles.memberButton, selected && styles.selectedMemberButton]}
+                      style={[styles.memberChip, selected && styles.memberChipSelected]}
                       onPress={() => setResponsibleUserId(member.userId)}
-                      activeOpacity={0.8}
+                      activeOpacity={0.84}
                     >
-                      <Text style={[styles.memberButtonText, selected && styles.selectedMemberButtonText]}>
-                        {member.fullName}
-                      </Text>
+                      <Text style={[styles.memberText, selected && styles.memberTextSelected]}>{member.fullName}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            <TouchableOpacity style={[styles.createButton, loading && styles.createButtonDisabled]} onPress={handleCreateBill} disabled={loading} activeOpacity={0.8}>
-              {loading ? <ActivityIndicator color={theme.colors.text.onPrimary} size="small" /> : <Text style={styles.createButtonText}>{isEditing ? 'Faturayı Güncelle' : 'Fatura Oluştur'}</Text>}
+            <TouchableOpacity style={[styles.submitButton, loading && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={loading} activeOpacity={0.9}>
+              {loading ? (
+                <ActivityIndicator size="small" color={theme.colors.text.onPrimary} />
+              ) : (
+                <Text style={styles.submitText}>{editingMode ? 'Faturayı Güncelle' : 'Faturayı Kaydet'}</Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
 
@@ -300,40 +361,171 @@ const AddBillScreen = ({ route, navigation }) => {
       </LinearGradient>
     </KeyboardAvoidingView>
   );
-};
+}
 
 function makeStyles(theme) {
   return StyleSheet.create({
-    container: { flex: 1 },
-    content: { flex: 1, padding: 20 },
-    header: { alignItems: 'center', marginBottom: 30 },
-    title: { fontSize: 28, fontWeight: 'bold', color: theme.colors.text.onPrimary, textAlign: 'center', marginBottom: 10 },
-    subtitle: { fontSize: 16, color: theme.colors.text.onPrimary, textAlign: 'center', opacity: 0.9 },
-    formContainer: { flex: 1 },
-    inputGroup: { marginBottom: 22 },
-    label: { fontSize: 16, fontWeight: '600', color: theme.colors.text.onPrimary, marginBottom: 10 },
-    textInput: { backgroundColor: theme.colors.background, opacity: 0.95, borderRadius: 12, padding: 14, fontSize: 16, color: theme.colors.text.primary, borderWidth: 1, borderColor: theme.colors.background },
-    textArea: { height: 90, textAlignVertical: 'top' },
-    hint: { marginTop: 6, color: theme.colors.text.onPrimary, opacity: 0.85, fontSize: 12 },
-    pickerContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-    billTypeButton: { backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: 12, padding: 14, minWidth: 120, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.35)' },
-    selectedBillTypeButton: { backgroundColor: theme.colors.background, opacity: 0.95, borderColor: theme.colors.success?.[500] },
-    fixedBillTypeButton: { borderColor: theme.colors.warning?.[500] },
-    variableBillTypeButton: { borderColor: theme.colors.primary?.[500] },
-    billTypeButtonText: { fontSize: 16, fontWeight: '600', color: theme.colors.text.onPrimary, textAlign: 'center' },
-    selectedBillTypeButtonText: { color: theme.colors.text.primary },
-    fixedBillTypeButtonText: { color: theme.colors.warning?.[500] },
-    variableBillTypeButtonText: { color: theme.colors.primary?.[500] },
-    billTypeDescription: { fontSize: 12, color: theme.colors.text.onPrimary, opacity: 0.8, textAlign: 'center', marginTop: 4 },
-    memberButton: { backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: 12, padding: 14, minWidth: 110, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.35)' },
-    selectedMemberButton: { backgroundColor: theme.colors.background, opacity: 0.95, borderColor: theme.colors.success?.[500] },
-    memberButtonText: { fontSize: 16, fontWeight: '600', color: theme.colors.text.onPrimary, textAlign: 'center' },
-    selectedMemberButtonText: { color: theme.colors.text.primary },
-    createButton: { backgroundColor: theme.colors.success?.[600] || '#16a34a', borderRadius: 12, padding: 18, alignItems: 'center', marginTop: 8, marginBottom: 30 },
-    createButtonDisabled: { backgroundColor: theme.colors.success?.[500] || '#22c55e' },
-    createButtonText: { fontSize: 18, fontWeight: 'bold', color: theme.colors.text.onPrimary },
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    gradient: { flex: 1 },
+    content: { flex: 1 },
+    scroll: { flex: 1 },
+    scrollContent: { padding: 18, paddingBottom: 36 },
+    hero: {
+      backgroundColor: theme.colors.primary[600],
+      borderRadius: 24,
+      padding: 22,
+      marginBottom: 16,
+    },
+    heroBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      marginBottom: 12,
+    },
+    heroBadgeText: {
+      color: theme.colors.text.onPrimary,
+      fontSize: 11,
+      fontWeight: '800',
+      letterSpacing: 0.7,
+    },
+    heroTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: theme.colors.text.onPrimary,
+      marginBottom: 6,
+    },
+    heroSubtitle: {
+      fontSize: 14,
+      color: theme.colors.text.onPrimary,
+      opacity: 0.92,
+    },
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 20,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+      marginBottom: 14,
+    },
+    sectionTitle: {
+      fontSize: 17,
+      fontWeight: '800',
+      color: theme.colors.text.primary,
+      marginBottom: 14,
+    },
+    inputGroup: { marginBottom: 14 },
+    row: { flexDirection: 'row', gap: 12 },
+    half: { flex: 1 },
+    label: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.colors.text.primary,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: theme.colors.background,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[300],
+      color: theme.colors.text.primary,
+      fontSize: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 13,
+    },
+    textArea: {
+      minHeight: 92,
+      textAlignVertical: 'top',
+    },
+    readonlyBox: {
+      backgroundColor: theme.colors.neutral[50],
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+      paddingHorizontal: 14,
+      paddingVertical: 13,
+    },
+    readonlyText: {
+      color: theme.colors.text.secondary,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    chips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    chip: {
+      width: '48%',
+      minWidth: 148,
+      backgroundColor: theme.colors.neutral[50],
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+      padding: 14,
+    },
+    chipSelected: {
+      backgroundColor: theme.colors.primary[50],
+      borderColor: theme.colors.primary[500],
+    },
+    chipTitle: {
+      color: theme.colors.text.primary,
+      fontSize: 15,
+      fontWeight: '800',
+      marginBottom: 4,
+    },
+    chipTitleSelected: {
+      color: theme.colors.primary[700],
+    },
+    chipMeta: {
+      color: theme.colors.text.secondary,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    chipMetaSelected: {
+      color: theme.colors.primary[700],
+    },
+    memberWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    memberChip: {
+      backgroundColor: theme.colors.neutral[50],
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    memberChipSelected: {
+      backgroundColor: theme.colors.success?.[50] || theme.colors.primary[50],
+      borderColor: theme.colors.success?.[500] || theme.colors.primary[500],
+    },
+    memberText: {
+      color: theme.colors.text.primary,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    memberTextSelected: {
+      color: theme.colors.text.primary,
+    },
+    submitButton: {
+      backgroundColor: theme.colors.success?.[600] || '#16a34a',
+      borderRadius: 16,
+      paddingVertical: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 8,
+    },
+    submitButtonDisabled: {
+      opacity: 0.7,
+    },
+    submitText: {
+      color: theme.colors.text.onPrimary,
+      fontSize: 17,
+      fontWeight: '800',
+    },
   });
 }
-
-export default AddBillScreen;
-
