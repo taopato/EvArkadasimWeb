@@ -25,6 +25,7 @@ import { HeroHeader } from '../shared/ui/premium/HeroHeader';
 import { useFocusEffect } from '@react-navigation/native';
 import eventBus from '../shared/events/bus';
 import { shadow } from '../shared/ui/shadow';
+import BrandMark from '../components/BrandMark';
 import {
   compareByRecentDate,
   getUTCMonthWindow,
@@ -619,7 +620,7 @@ const TumHarcamalarScreen = ({ navigation, route }) => {
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>🧾</Text>
+            <BrandMark variant="logo" size={56} subtle style={styles.emptyLogo} />
             <Text style={styles.emptyTitle}>Harcama bulunamadı</Text>
             <Text style={styles.emptySubtitle}>
               Filtreleri değiştirerek daha fazla sonuç görebilirsiniz
@@ -764,9 +765,10 @@ function makeStyles(theme, isCompact) {
       alignItems: 'center',
       paddingVertical: 48
     },
-    emptyIcon: {
-      fontSize: 48,
-      marginBottom: 16
+    emptyLogo: {
+      borderWidth: 0,
+      marginBottom: 18,
+      backgroundColor: 'transparent',
     },
     emptyTitle: { fontSize: 18, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 8 },
     emptySubtitle: { fontSize: 14, color: theme.colors.text.secondary, textAlign: 'center', lineHeight: 20 },

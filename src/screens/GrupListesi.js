@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { houseApi } from '../services/api';
 import { useCommonStyles, makeColorThemes } from '../shared/ui/CommonStyles';
 import { useTheme } from '../shared/theme/ThemeProvider';
+import BrandMark from '../components/BrandMark';
 
 export default function GroupListScreen({ navigation, route }) {
   const [houses, setHouses] = useState([]);
@@ -187,7 +188,7 @@ export default function GroupListScreen({ navigation, route }) {
           </View>
         ) : (
           <View style={CommonStyles.emptyContainer}>
-            <Text style={CommonStyles.emptyIcon}>🏠</Text>
+            <BrandMark variant="logo" size={52} subtle style={styles.emptyLogo} />
             <Text style={CommonStyles.emptyText}>Henüz bir ev grubunuz bulunmamaktadır.</Text>
             <Text style={CommonStyles.emptyText}>İlk ev grubunuzu oluşturmak için yukarıdaki butona tıklayın.</Text>
           </View>
@@ -235,6 +236,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '800',
+  },
+  emptyLogo: {
+    marginBottom: 12,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
   },
 });
 

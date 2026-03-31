@@ -28,6 +28,7 @@ import {
 import { getParentCategoryHint } from "../shared/state/categoryHints";
 import { useFocusEffect } from "@react-navigation/native";
 import useScrollRestore from "../hooks/useScrollRestore";
+import BrandMark from "../components/BrandMark";
 
 // ₺ format
 const formatAmount = (amount) =>
@@ -554,7 +555,7 @@ export default function BillsOverviewScreen({ navigation, route }) {
 
   const ListEmpty = useCallback(() => (
     <View style={[styles.empty, { paddingHorizontal: 16 }]}>
-<Text style={styles.emptyIcon}>📄</Text>
+<BrandMark variant="logo" size={52} subtle style={styles.emptyLogo} />
 <Text style={[styles.emptyText, { color: theme.colors.text.secondary }]}>
         {loading ? "Veriler yükleniyor..." : "Bu ay için görünür planlı gider bulunmuyor."}
       </Text>
@@ -648,7 +649,7 @@ const styles = StyleSheet.create({
     marginTop: 40,
     padding: 16,
   },
-  emptyIcon: { fontSize: 32, marginBottom: 8 },
+  emptyLogo: { marginBottom: 10, borderWidth: 0, backgroundColor: 'transparent' },
   emptyText: { fontSize: 14, marginBottom: 8 },
   resetBtn: {
     paddingHorizontal: 12,

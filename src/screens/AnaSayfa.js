@@ -6,6 +6,7 @@ import { HeroHeader } from '../shared/ui/premium/HeroHeader';
 import { WeekStrip } from '../shared/ui/premium/WeekStrip';
 import { expensesApi, houseApi, houseNotesApi, paymentsApi } from '../services/api';
 import { normalizeExpense } from '../utils/expenseClassifier';
+import BrandMark from '../components/BrandMark';
 import {
   deduplicateMonthlyPlans,
   getExpenseDisplayTitle,
@@ -252,25 +253,31 @@ const HomeScreen = ({ navigation }) => {
         <WeekStrip selectedKey={selectedDayKey || undefined} onSelect={(key) => setSelectedDayKey(key)} />
 
         {hasDefaultHouse && (
-          <View style={styles.todayCard}>
-            <Text style={styles.todayEyebrow}>BUGÜN İÇİN ÖZET</Text>
-            <Text style={styles.todayTitle}>{activeHouseName}</Text>
-            <View style={styles.todayGrid}>
-              <View style={styles.todayBox}>
-                <Text style={styles.todayLabel}>Borç</Text>
-                <Text style={styles.todayValue}>{formatCurrency(dashboardStats.payable)}</Text>
-              </View>
-              <View style={styles.todayBox}>
-                <Text style={styles.todayLabel}>Alacak</Text>
-                <Text style={styles.todayValue}>{formatCurrency(dashboardStats.receivable)}</Text>
-              </View>
-              <View style={styles.todayBox}>
-                <Text style={styles.todayLabel}>Bekleyen Ödeme</Text>
-                <Text style={styles.todayValue}>{dashboardStats.pendingCount}</Text>
-              </View>
-              <View style={styles.todayBox}>
-                <Text style={styles.todayLabel}>Borçlu olduğun kişi</Text>
-                <Text style={styles.todayValue}>{dashboardStats.debtPeople}</Text>
+          <View style={styles.summarySection}>
+            <View style={styles.brandStrip}>
+              <BrandMark size={18} subtle />
+              <Text style={styles.brandStripText}>Ev Arkadaşım özeti</Text>
+            </View>
+            <View style={styles.todayCard}>
+              <Text style={styles.todayEyebrow}>BUGÜN İÇİN ÖZET</Text>
+              <Text style={styles.todayTitle}>{activeHouseName}</Text>
+              <View style={styles.todayGrid}>
+                <View style={styles.todayBox}>
+                  <Text style={styles.todayLabel}>Borç</Text>
+                  <Text style={styles.todayValue}>{formatCurrency(dashboardStats.payable)}</Text>
+                </View>
+                <View style={styles.todayBox}>
+                  <Text style={styles.todayLabel}>Alacak</Text>
+                  <Text style={styles.todayValue}>{formatCurrency(dashboardStats.receivable)}</Text>
+                </View>
+                <View style={styles.todayBox}>
+                  <Text style={styles.todayLabel}>Bekleyen Ödeme</Text>
+                  <Text style={styles.todayValue}>{dashboardStats.pendingCount}</Text>
+                </View>
+                <View style={styles.todayBox}>
+                  <Text style={styles.todayLabel}>Borçlu olduğun kişi</Text>
+                  <Text style={styles.todayValue}>{dashboardStats.debtPeople}</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -517,9 +524,30 @@ const makeStyles = (theme) =>
       paddingVertical: 10,
     },
     noticeButtonText: { color: theme.colors.text.onPrimary, fontWeight: '700' },
-    todayCard: {
+    summarySection: {
       marginHorizontal: 16,
       marginTop: 16,
+    },
+    brandStrip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+      backgroundColor: theme.colors.primary[50],
+      borderWidth: 1,
+      borderColor: theme.colors.primary[100],
+      marginBottom: 10,
+    },
+    brandStripText: {
+      color: theme.colors.primary[700],
+      fontSize: 12,
+      fontWeight: '800',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    todayCard: {
       borderRadius: 22,
       padding: 18,
       backgroundColor: theme.colors.surface,

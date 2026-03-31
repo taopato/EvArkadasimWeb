@@ -21,6 +21,7 @@ import { useTheme } from '../shared/theme/ThemeProvider';
 import { useCommonStyles } from '../shared/ui/CommonStyles';
 import { normalizeExpense } from '../utils/expenseClassifier';
 import { getCategoryDisplayName, getCategoryIcon, getCategoryColor } from '../constants/ExpenseEnums';
+import BrandMark from '../components/BrandMark';
 import {
   getUTCMonthWindow,
   formatCurrency,
@@ -431,7 +432,7 @@ const HarcamaListesiScreen = ({ navigation, route }) => {
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📋</Text>
+            <BrandMark variant="logo" size={52} subtle style={styles.emptyLogo} />
             <Text style={styles.emptyTitle}>Harcama bulunamadı</Text>
             <Text style={styles.emptySubtitle}>
               Seçilen filtreler için harcama kaydı bulunmuyor
@@ -540,9 +541,10 @@ const makeStyles = (theme) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 48
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16
+  emptyLogo: {
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    marginBottom: 16,
   },
   emptyTitle: { fontSize: 18, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: theme.colors.text.secondary, textAlign: 'center', lineHeight: 20 },

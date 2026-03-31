@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import { useAuth } from '../context/AuthContext';
 import { GOOGLE_CLIENT_IDS, BASE_URL } from '../shared/config/env';
+import BrandMark from '../components/BrandMark';
 
 export default function SettingsScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -22,6 +23,9 @@ export default function SettingsScreen({ navigation }) {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.heroCard}>
+        <View style={styles.heroBadge}>
+          <BrandMark size={22} subtle />
+        </View>
         <Text style={styles.eyebrow}>Hesap</Text>
         <Text style={styles.title}>Ayarlar</Text>
         <Text style={styles.sub}>{user?.fullName || user?.email || 'Kullanıcı'}</Text>
@@ -118,6 +122,13 @@ const makeStyles = (theme) =>
       borderWidth: 1,
       borderColor: theme.colors.primary[200],
       marginBottom: 16,
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    heroBadge: {
+      position: 'absolute',
+      top: 14,
+      right: 14,
     },
     eyebrow: {
       color: theme.colors.primary[700],

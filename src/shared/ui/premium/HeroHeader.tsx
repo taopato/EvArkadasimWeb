@@ -3,6 +3,7 @@ import { View, Text, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/ThemeProvider';
 import { PremiumButton } from './Button';
+import BrandMark from '../../../components/BrandMark';
 
 type Props = {
   title: string;
@@ -12,6 +13,7 @@ type Props = {
   onPrimaryAction?: () => void;
   primaryLabel?: string;
   style?: ViewStyle;
+  showBrand?: boolean;
 };
 
 export const HeroHeader: React.FC<Props> = ({
@@ -22,6 +24,7 @@ export const HeroHeader: React.FC<Props> = ({
   onPrimaryAction,
   primaryLabel = '+ Ekle',
   style,
+  showBrand = true,
 }) => {
   const { theme } = useTheme();
   return (
@@ -33,7 +36,18 @@ export const HeroHeader: React.FC<Props> = ({
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={{ color: theme.colors.text.onPrimary, fontSize: 18, fontWeight: '800' }}>{title}</Text>
-        {onPrimaryAction ? <PremiumButton title={primaryLabel} size="small" onPress={onPrimaryAction} /> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {showBrand ? (
+            <BrandMark
+              size={22}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.14)',
+                borderColor: 'rgba(255,255,255,0.2)',
+              }}
+            />
+          ) : null}
+          {onPrimaryAction ? <PremiumButton title={primaryLabel} size="small" onPress={onPrimaryAction} /> : null}
+        </View>
       </View>
       {!!subtitle && (
         <Text style={{ color: theme.colors.text.onPrimary, opacity: 0.9, marginTop: 6 }}>

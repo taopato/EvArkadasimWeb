@@ -6,6 +6,7 @@ import { expensesApi } from '../services/api';
 import { useCommonStyles, makeColorThemes } from '../shared/ui/CommonStyles';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import Toast from '../components/Toast';
+import BrandMark from '../components/BrandMark';
 
 const CATEGORY_ID_TO_KEY = {
   0: 'Rent',
@@ -243,7 +244,7 @@ const BillListScreen = ({ route, navigation }) => {
           </View>
         ) : (
           <View style={CommonStyles.emptyContainer}>
-            <Text style={CommonStyles.emptyIcon}>📄</Text>
+            <BrandMark variant="logo" size={52} subtle style={styles.emptyLogo} />
             <Text style={CommonStyles.emptyText}>
               {headerTitle} kategorisinde (bugün ve öncesi) kalem bulunmuyor.
             </Text>
@@ -267,6 +268,7 @@ function makeStyles(theme) {
     billAmountBox: { alignItems: 'flex-end' },
     billAmount: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text.primary },
     billCat: { fontSize: 12, marginTop: 2, color: theme.colors.text.secondary },
+    emptyLogo: { marginBottom: 12, borderWidth: 0, backgroundColor: 'transparent' },
   });
 }
 
