@@ -1,175 +1,288 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { useCommonStyles, makeColorThemes } from '../shared/ui/CommonStyles';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import { ledgerApi, houseApi } from '../services/api';
 
-const LedgerDetailScreen = ({ route }) => {
-  const { houseId, houseName } = route.params || {};
-  const CommonStyles = useCommonStyles();
+const asData = (response) => response?.data?.data ?? response?.data ?? [];
+
+const toMoney = (value) =>
+  new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency: 'TRY',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+
+const formatDate = (value) => {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('tr-TR', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+export default function DefterDetayi({ route }) {
   const { theme } = useTheme();
-  const ColorThemes = makeColorThemes(theme);
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const [ledgerLines, setLedgerLines] = useState([]);
-  const [members, setMembers] = useState([]);
+  const { houseId, houseName } = route.params || {};
+
   const [loading, setLoading] = useState(true);
+  const [ledgerLines, setLedgerLines] = useState([]);
+  const [membersMap, setMembersMap] = useState({});
 
-  useEffect(() => {
-    if (houseId) fetchLedgerData();
-  }, [houseId]);
-
-  const fetchLedgerData = async () => {
+  const loadData = useCallback(async () => {
+    if (!houseId) return;
+    setLoading(true);
     try {
-      setLoading(true);
-      const [ledgerResponse, membersResponse] = await Promise.all([ledgerApi.byHouse(houseId), houseApi.getMembers(houseId)]);
-      const ledgerData = ledgerResponse?.data?.data || ledgerResponse?.data || [];
-      const membersData = membersResponse?.data?.data || membersResponse?.data || [];
-      setLedgerLines(Array.isArray(ledgerData) ? ledgerData : []);
-      setMembers(Array.isArray(membersData) ? membersData : []);
+      const [ledgerResponse, membersResponse] = await Promise.all([
+        ledgerApi.byHouse(houseId),
+        houseApi.getMembers(houseId),
+      ]);
+
+      const lines = asData(ledgerResponse);
+      const members = asData(membersResponse);
+      const map = {};
+
+      (Array.isArray(members) ? members : []).forEach((member) => {
+        const id = Number(member?.userId ?? member?.id ?? member?.user?.id);
+        const fullName = member?.fullName ?? member?.name ?? member?.user?.fullName;
+        if (Number.isFinite(id)) map[id] = fullName || `Kullanici ${id}`;
+      });
+
+      setLedgerLines(Array.isArray(lines) ? lines : []);
+      setMembersMap(map);
     } catch {
-      Alert.alert('Hata', 'Borç/alacak detayları alınırken bir hata oluştu');
+      Alert.alert('Hata', 'Defter verileri yuklenemedi.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [houseId]);
 
-  const formatAmount = (amount) =>
-    new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
-  const formatDate = (dateString) =>
-    new Date(dateString).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' });
+  const grouped = Object.values(
+    ledgerLines.reduce((acc, line) => {
+      const fromUserId = Number(line?.fromUserId);
+      const toUserId = Number(line?.toUserId);
+      const key = `${fromUserId}-${toUserId}`;
+      if (!Number.isFinite(fromUserId) || !Number.isFinite(toUserId)) return acc;
 
-  const getMemberName = (userId) => {
-    const member = members.find((item) => item.userId === userId || item.id === userId);
-    return member ? member.fullName || member.name : `Kullanıcı ${userId}`;
-  };
-
-  const groupedLedger = ledgerLines.reduce((acc, line) => {
-    const key = `${line.fromUserId}-${line.toUserId}`;
-    if (!acc[key]) {
-      acc[key] = {
-        fromUserId: line.fromUserId,
-        toUserId: line.toUserId,
+      acc[key] = acc[key] || {
+        fromUserId,
+        toUserId,
         totalAmount: 0,
-        lines: [],
-        latestDate: line.postDate,
+        latestDate: line?.postDate,
+        count: 0,
       };
-    }
-    acc[key].totalAmount += line.amount || 0;
-    acc[key].lines.push(line);
-    if (new Date(line.postDate) > new Date(acc[key].latestDate)) {
-      acc[key].latestDate = line.postDate;
-    }
-    return acc;
-  }, {});
 
-  const sortedLedger = Object.values(groupedLedger).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
+      acc[key].totalAmount += Number(line?.amount || 0);
+      acc[key].count += 1;
+      if (new Date(line?.postDate) > new Date(acc[key].latestDate)) {
+        acc[key].latestDate = line?.postDate;
+      }
+      return acc;
+    }, {})
+  ).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
 
   if (loading) {
     return (
-      <View style={CommonStyles.container}>
-        <View style={CommonStyles.header}>
-          <Text style={CommonStyles.title}>Borç/Alacak Detayları</Text>
-        </View>
-        <View style={[CommonStyles.card, { alignItems: 'center', padding: 40 }]}>
-          <ActivityIndicator size="large" color={theme.colors.primary[600]} />
-          <Text style={{ color: theme.colors.text.secondary, marginTop: 16 }}>Yükleniyor...</Text>
-        </View>
+      <View style={styles.loaderWrap}>
+        <ActivityIndicator size="large" color={theme.colors.primary[500]} />
       </View>
     );
   }
 
   return (
-    <View style={CommonStyles.container}>
-      <ScrollView style={CommonStyles.content}>
-        <View style={CommonStyles.header}>
-          <Text style={CommonStyles.title}>Borç/Alacak Detayları</Text>
-          <Text style={CommonStyles.subtitle}>{houseName || ''}</Text>
-        </View>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <LinearGradient colors={[theme.colors.primary[500], theme.colors.primary[400]]} style={styles.hero}>
+          <Text style={styles.heroBadge}>DEFTER DETAYI</Text>
+          <Text style={styles.heroTitle}>Borç ve alacak akisi</Text>
+          <Text style={styles.heroSubtitle}>{houseName || 'Ev grubu'}</Text>
+        </LinearGradient>
 
-        <View style={CommonStyles.card}>
-          <Text style={styles.sectionTitle}>Özet</Text>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Toplam İşlem</Text>
-              <Text style={styles.summaryValue}>{ledgerLines.length}</Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Aktif Çift</Text>
-              <Text style={styles.summaryValue}>{sortedLedger.length}</Text>
-            </View>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Toplam hareket</Text>
+            <Text style={styles.summaryValue}>{ledgerLines.length}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Aktif çift</Text>
+            <Text style={styles.summaryValue}>{grouped.length}</Text>
           </View>
         </View>
 
-        {sortedLedger.length === 0 ? (
-          <View style={CommonStyles.card}>
-            <Text style={styles.emptyText}>Henüz borç/alacak kaydı bulunmuyor.</Text>
+        {grouped.length === 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.emptyText}>Bu ev icin henuz defter kaydi yok.</Text>
           </View>
         ) : (
-          sortedLedger.map((group, index) => (
-            <View key={index} style={CommonStyles.card}>
-              <View style={styles.ledgerHeader}>
-                <View style={styles.ledgerInfo}>
-                  <Text style={styles.ledgerFrom}>{getMemberName(group.fromUserId)}</Text>
-                  <Text style={styles.ledgerArrow}>→</Text>
-                  <Text style={styles.ledgerTo}>{getMemberName(group.toUserId)}</Text>
-                </View>
-                <Text style={styles.ledgerTotalAmount}>{formatAmount(group.totalAmount)}</Text>
+          grouped.map((item) => (
+            <View key={`${item.fromUserId}-${item.toUserId}`} style={styles.card}>
+              <View style={styles.row}>
+                <Text style={styles.personText}>{membersMap[item.fromUserId] || `Kullanici ${item.fromUserId}`}</Text>
+                <Text style={styles.arrowText}>-></Text>
+                <Text style={styles.personText}>{membersMap[item.toUserId] || `Kullanici ${item.toUserId}`}</Text>
               </View>
-
-              <Text style={styles.ledgerSubtext}>
-                {group.lines.length} işlem • Son: {formatDate(group.latestDate)}
-              </Text>
-
-              {group.lines.slice(0, 3).map((line, lineIndex) => (
-                <View key={line.id || lineIndex} style={styles.ledgerDetail}>
-                  <Text style={styles.ledgerDetailDate}>{formatDate(line.postDate)}</Text>
-                  <Text style={styles.ledgerDetailAmount}>{formatAmount(line.amount)}</Text>
-                </View>
-              ))}
-
-              {group.lines.length > 3 && <Text style={styles.ledgerMore}>+{group.lines.length - 3} işlem daha...</Text>}
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Toplam</Text>
+                <Text style={styles.detailValue}>{toMoney(item.totalAmount)}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Hareket</Text>
+                <Text style={styles.detailValue}>{item.count}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Son tarih</Text>
+                <Text style={styles.detailValue}>{formatDate(item.latestDate)}</Text>
+              </View>
             </View>
           ))
         )}
 
-        <TouchableOpacity style={CommonStyles.menuButton} onPress={fetchLedgerData}>
-          <View style={[CommonStyles.buttonContent, { backgroundColor: ColorThemes.primary.background }]}>
-            <Text style={CommonStyles.buttonIcon}>🔄</Text>
-            <Text style={CommonStyles.buttonText}>Yenile</Text>
-          </View>
+        <TouchableOpacity style={styles.refreshButton} onPress={loadData} activeOpacity={0.85}>
+          <Text style={styles.refreshButtonText}>Yenile</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
   );
-};
+}
 
 function makeStyles(theme) {
   return StyleSheet.create({
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 16 },
-    summaryRow: { flexDirection: 'row', justifyContent: 'space-around' },
-    summaryItem: { alignItems: 'center' },
-    summaryLabel: { fontSize: 12, color: theme.colors.text.secondary, marginBottom: 4 },
-    summaryValue: { fontSize: 20, fontWeight: 'bold', color: theme.colors.primary[600] },
-    ledgerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    ledgerInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-    ledgerFrom: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text.primary },
-    ledgerArrow: { fontSize: 16, color: theme.colors.text.secondary, marginHorizontal: 8 },
-    ledgerTo: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text.primary },
-    ledgerTotalAmount: { fontSize: 18, fontWeight: 'bold', color: theme.colors.primary[600] },
-    ledgerSubtext: { fontSize: 12, color: theme.colors.text.secondary, marginBottom: 12 },
-    ledgerDetail: {
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    loaderWrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.background,
+      padding: 24,
+    },
+    content: {
+      padding: 16,
+      paddingBottom: 36,
+      gap: 16,
+    },
+    hero: {
+      borderRadius: 24,
+      padding: 20,
+      gap: 8,
+    },
+    heroBadge: {
+      color: '#dff4ff',
+      fontSize: 12,
+      fontWeight: '800',
+      letterSpacing: 0.8,
+    },
+    heroTitle: {
+      color: '#fff',
+      fontSize: 26,
+      fontWeight: '800',
+    },
+    heroSubtitle: {
+      color: 'rgba(255,255,255,0.9)',
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    summaryCard: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    summaryItem: {
+      flex: 1,
+      backgroundColor: theme.colors.surface || '#fff',
+      borderRadius: 18,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral?.[200] || '#e6edf5',
+    },
+    summaryLabel: {
+      color: theme.colors.text.secondary,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    summaryValue: {
+      color: theme.colors.text.primary,
+      fontSize: 24,
+      fontWeight: '800',
+      marginTop: 8,
+    },
+    card: {
+      backgroundColor: theme.colors.surface || '#fff',
+      borderRadius: 20,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral?.[200] || '#e6edf5',
+      gap: 10,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 8,
+    },
+    personText: {
+      flex: 1,
+      color: theme.colors.text.primary,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    arrowText: {
+      color: theme.colors.text.secondary,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    detailRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: 4,
-      paddingLeft: 16,
     },
-    ledgerDetailDate: { fontSize: 12, color: theme.colors.text.secondary },
-    ledgerDetailAmount: { fontSize: 12, color: theme.colors.text.primary },
-    ledgerMore: { fontSize: 12, color: theme.colors.text.secondary, fontStyle: 'italic', textAlign: 'center', marginTop: 8 },
-    emptyText: { fontSize: 16, color: theme.colors.text.secondary, textAlign: 'center', padding: 20 },
+    detailLabel: {
+      color: theme.colors.text.secondary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    detailValue: {
+      color: theme.colors.text.primary,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    emptyText: {
+      color: theme.colors.text.secondary,
+      fontSize: 15,
+      textAlign: 'center',
+    },
+    refreshButton: {
+      minHeight: 52,
+      borderRadius: 16,
+      backgroundColor: theme.colors.primary[500],
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    refreshButtonText: {
+      color: '#fff',
+      fontSize: 15,
+      fontWeight: '800',
+    },
   });
 }
-
-export default LedgerDetailScreen;
