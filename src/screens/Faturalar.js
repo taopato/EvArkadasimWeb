@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  useWindowDimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../context/AuthContext";
@@ -149,6 +150,8 @@ const cmpByDateThenIdDesc = (a, b) => {
 export default function BillsOverviewScreen({ navigation, route }) {
   const { houseId, houseName } = route.params || {};
   const { theme } = useTheme();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 520;
   const { user } = useAuth();
   const [loading, setLoading] = React.useState(false);
   const CommonStyles = useCommonStyles();
@@ -495,7 +498,7 @@ export default function BillsOverviewScreen({ navigation, route }) {
         />
       </View>
     </View>
-  ), [theme, totals, filtered, houseName, category]);
+  ), [theme, totals, filtered, houseName, category, isCompact]);
 
   const renderItem = useCallback(({ item: it, index: idx }) => {
     const raw = it._raw || {};
@@ -655,6 +658,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 });
+
+
+
 
 
 
