@@ -281,7 +281,12 @@ export default function EvNotlari({ route }) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <View style={styles.hero}>
           <Text style={[styles.title, { color: theme.colors.text.primary }]}>{houseName}</Text>
           <Text style={[styles.subtitle, { color: theme.colors.text.secondary }]}>
@@ -429,7 +434,7 @@ const makeStyles = (theme, isCompact) =>
       borderRadius: 10,
       paddingHorizontal: 12,
       paddingVertical: 10,
-      fontSize: 14,
+      fontSize: 16,
     },
     addBtn: {
       borderRadius: 10,
