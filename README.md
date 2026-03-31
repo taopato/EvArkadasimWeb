@@ -1,49 +1,53 @@
-# Ev Arkadaşım Mobile
+# Ev Arkadasim Web
 
-Expo tabanlı mobil istemci. Uygulama; ev grupları, ortak harcamalar, düzenli giderler, borç/alacak özeti ve ödeme onayı akışlarını yönetir.
+Ev Arkadasim'in web istemcisi, ortak yasam duzenini tek bir uygulama icinde toplamak icin tasarlandi. Ev gruplari, harcamalar, duzenli giderler, odemeler, borc-alacak ozeti ve ev notlari gibi gunluk akislari sade bir arayuzle bir araya getirir.
 
-## Başlatma
+Bu repo, ayni kod tabanini web ve mobil tarayici deneyimine yakin bir yapida surdurmek icin Expo ve React Native Web uzerinde gelistirilmektedir.
+
+## Neler Var?
+
+- Giris, kayit ve oturum akislari
+- Ev grubu olusturma, secme ve uye daveti
+- Duzensiz harcama ve duzenli gider yonetimi
+- Faturalar, odemeler ve borc-alacak ekranlari
+- Ev notlari ve ortak liste deneyimi
+- Responsive arayuz ve mobil tarayici odakli ekran duzenleri
+
+## Teknoloji
+
+- Expo
+- React Native Web
+- React Navigation
+- Axios
+- TanStack Query
+
+## Yerel Calistirma
 
 ```bash
 npm install
 npm start
 ```
 
-Alternatif:
+Web preview:
 
 ```bash
-npx expo start --lan
+npm run web
 ```
 
-## Gereksinimler
+Production web build:
 
-- Node.js 20+
-- Expo Go
-- Aynı ağda çalışan backend API
+```bash
+npm run web:build
+```
 
-## Önemli Dosyalar
+## Proje Haritasi
 
-- `App.js`: Ana navigation ve provider yapısı
-- `src/services/api.js`: Aktif frontend API katmanı
-- `src/context/AuthContext.js`: Oturum ve varsayılan ev yönetimi
-- `src/shared/theme/`: Tema sistemi
-- `app.json`: Expo config ve Google client ID alanları
+- `App.js`: uygulama giris noktasi ve navigation yapisi
+- `src/screens/`: urun ekranlari
+- `src/services/api.js`: API baglanti katmani
+- `src/context/`: oturum ve uygulama durum yonetimi
+- `src/shared/`: tema, ortak bilesenler ve yardimci yapilar
 
-## Google Login
+## Gelistirme Notu
 
-Google giriş akışı kod tarafında hazırdır. Çalıştırmak için aşağıdaki alanların doldurulması gerekir:
-
-- `app.json > expo.extra.GOOGLE_WEB_CLIENT_ID`
-- `app.json > expo.extra.GOOGLE_IOS_CLIENT_ID`
-- `app.json > expo.extra.GOOGLE_ANDROID_CLIENT_ID`
-- backend `appsettings.json > GoogleAuth:ClientIds`
-
-## Durum
-
-- Auth akışı aktif
-- Borç/alacak ekranları backend ile hizalı
-- Tema sistemi aktif
-- QR ile Expo Go üzerinden test edilebilir
-
-
--Tarik Deneme
+Bu proje, urun tarafinda hizli iterasyon yapabilmek icin pragmatik bir yapiyla ilerliyor. Odak noktasi; gundelik kullanimda rahat hissettiren, temiz ve tutarli bir deneyim sunmak.
