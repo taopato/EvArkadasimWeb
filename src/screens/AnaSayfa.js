@@ -255,7 +255,7 @@ const HomeScreen = ({ navigation }) => {
         {hasDefaultHouse && (
           <View style={styles.summarySection}>
             <View style={styles.brandStrip}>
-              <BrandMark size={18} subtle />
+              <BrandMark variant="logo" size={82} subtle />
               <Text style={styles.brandStripText}>Ev Arkadaşım özeti</Text>
             </View>
             <View style={styles.todayCard}>

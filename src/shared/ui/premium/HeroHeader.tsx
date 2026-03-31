@@ -39,11 +39,8 @@ export const HeroHeader: React.FC<Props> = ({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {showBrand ? (
             <BrandMark
-              size={22}
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.14)',
-                borderColor: 'rgba(255,255,255,0.2)',
-              }}
+              variant="logo"
+              size={40}
             />
           ) : null}
           {onPrimaryAction ? <PremiumButton title={primaryLabel} size="small" onPress={onPrimaryAction} /> : null}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import { useTheme } from '../shared/theme/ThemeProvider';
 
 const ICON = require('../assets/adaptive-icon.png');
@@ -17,25 +17,13 @@ export default function BrandMark({
   const tint = subtle ? theme.colors.text.secondary : theme.colors.text.primary;
 
   return (
-    <View
-      style={[
-        styles.wrap,
-        isLogo ? null : {
-          width: size + 14,
-          height: size + 14,
-          borderRadius: (size + 14) / 2,
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.neutral[200],
-        },
-        style,
-      ]}
-    >
+    <View style={[{ alignItems: 'center', justifyContent: 'center' }, style]}>
       <Image
         source={isLogo ? LOGO : ICON}
         resizeMode="contain"
         style={{
-          width: isLogo ? size * 2.6 : size,
-          height: isLogo ? size * 1.2 : size,
+          width: isLogo ? size * 2.8 : size,
+          height: isLogo ? size * 1.35 : size,
         }}
       />
       {label ? (
@@ -54,12 +42,3 @@ export default function BrandMark({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-});
