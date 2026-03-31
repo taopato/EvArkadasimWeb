@@ -177,7 +177,6 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           startMonth: isoStart,
           ortakHarcamaTutari: monthly,
           sahsiHarcamalar: [],
-          installmentCount: Number(installmentCount),
           description: descriptionSafe,
           Description: descriptionSafe,
           Aciklama: descriptionSafe,
