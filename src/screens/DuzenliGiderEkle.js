@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -58,6 +59,7 @@ export default function DuzenliGiderEkle({ navigation, route }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempMonthOffset, setTempMonthOffset] = useState(() => new Date().getMonth());
   const [tempDay, setTempDay] = useState(() => String(Math.min(new Date().getDate(), 28)));
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!activeHouseId) {
@@ -105,7 +107,10 @@ export default function DuzenliGiderEkle({ navigation, route }) {
   };
 
   const onSave = async () => {
+    if (saving) return;
     try {
+      setSaving(true);
+
       if (!payerUserId) {
         Alert.alert('Hata', 'Odeyecek kisiyi secin.');
         return;
@@ -151,8 +156,6 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           Description: descriptionSafe,
           Aciklama: descriptionSafe,
         });
-
-        Alert.alert('Basarili', 'Taksitli gider plani olusturuldu.');
       } else if (mode === 'recurring') {
         const monthly = parseIntFromTR(fixedAmount);
         if (!(monthly > 0)) {
@@ -179,8 +182,6 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           Description: descriptionSafe,
           Aciklama: descriptionSafe,
         });
-
-        Alert.alert('Basarili', 'Duzenli gider plani olusturuldu.');
       } else {
         const once = parseIntFromTR(fixedAmount);
         if (!(once > 0)) {
@@ -204,14 +205,22 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           Description: descriptionSafe,
           Aciklama: descriptionSafe,
         });
-
-        Alert.alert('Basarili', 'Tek seferlik gider olusturuldu.');
       }
 
       eventBus.emit('expenses:updated', { houseId: activeHouseId });
-      navigation.goBack();
+      if (mode === 'recurring' || mode === 'installment') {
+        eventBus.emit('expenses:created:recurring', { houseId: activeHouseId });
+        navigation.replace('BillsOverviewScreen', {
+          houseId: activeHouseId,
+          houseName: activeHouseName,
+        });
+      } else {
+        navigation.goBack();
+      }
     } catch (error) {
       Alert.alert('Hata', error?.response?.data?.message || error?.message || 'Kaydedilemedi');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -340,8 +349,13 @@ export default function DuzenliGiderEkle({ navigation, route }) {
             </>
           )}
 
-          <TouchableOpacity style={styles.saveButton} onPress={onSave} activeOpacity={0.9}>
-            <Text style={styles.saveButtonText}>Plani Kaydet</Text>
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={onSave}
+            activeOpacity={0.9}
+            disabled={saving}
+          >
+            {saving ? <ActivityIndicator color={theme.colors.text.onPrimary} /> : <Text style={styles.saveButtonText}>Plani Kaydet</Text>}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -497,6 +511,9 @@ const makeStyles = (theme, isCompact) =>
       borderRadius: 16,
       paddingVertical: 15,
       alignItems: 'center',
+    },
+    saveButtonDisabled: {
+      opacity: 0.75,
     },
     saveButtonText: {
       color: theme.colors.text.onPrimary,

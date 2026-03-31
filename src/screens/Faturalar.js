@@ -194,13 +194,12 @@ export default function BillsOverviewScreen({ navigation, route }) {
               color: theme.colors.text.primary,
             }}
           >
-            �
+            {"<"}
           </Text>
         </Pressable>
       ),
     });
   }, [navigation, theme]);
-
 
   const showToast = (message, type = "success") =>
     setToast({ visible: true, message, type });
@@ -438,33 +437,33 @@ export default function BillsOverviewScreen({ navigation, route }) {
 
   const ListHeader = useCallback(() => (
     <View>
-      <LinearGradient
+<LinearGradient
         colors={[theme.colors.primary?.[700], theme.colors.primary?.[500]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ paddingTop: 18, paddingBottom: 18, paddingHorizontal: 16, borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}
       >
-        <View style={{ flexDirection: isCompact ? 'column' : 'row', justifyContent: 'space-between', alignItems: isCompact ? 'flex-start' : 'center', gap: isCompact ? 12 : 0 }}>
-          <Text style={{ color: theme.colors.text.onPrimary, fontSize: 20, fontWeight: '800' }}>Planlı Giderler</Text>
-          <PremiumButton title="Plan Ekle" size="small" onPress={handleAddBill} />
-        </View>
-        <Text style={{ color: theme.colors.text.onPrimary, opacity: 0.9, marginTop: 6 }}>{houseName}</Text>
-        <View style={{ flexDirection: isCompact ? 'column' : 'row', gap: 12, marginTop: 14 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.colors.text.onPrimary, opacity: 0.85, fontSize: 12 }}>Toplam</Text>
-            <Text style={{ color: theme.colors.text.onPrimary, fontSize: 22, fontWeight: '800' }}>{formatAmount(totals.all)}</Text>
-          </View>
+<View style={{ flexDirection: isCompact ? 'column' : 'row', justifyContent: 'space-between', alignItems: isCompact ? 'flex-start' : 'center', gap: isCompact ? 12 : 0 }}>
+<Text style={{ color: theme.colors.text.onPrimary, fontSize: 20, fontWeight: '800' }}>Planlı Giderler</Text>
+<PremiumButton title="Plan Ekle" size="small" onPress={handleAddBill} />
+</View>
+<Text style={{ color: theme.colors.text.onPrimary, opacity: 0.9, marginTop: 6 }}>{houseName}</Text>
+<View style={{ flexDirection: isCompact ? 'column' : 'row', gap: 12, marginTop: 14 }}>
+<View style={{ flex: 1 }}>
+<Text style={{ color: theme.colors.text.onPrimary, opacity: 0.85, fontSize: 12 }}>Toplam</Text>
+<Text style={{ color: theme.colors.text.onPrimary, fontSize: 22, fontWeight: '800' }}>{formatAmount(totals.all)}</Text>
+</View>
           {!isCompact && <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />}
           <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.colors.text.onPrimary, opacity: 0.85, fontSize: 12 }}>Fatura Sayısı</Text>
-            <Text style={{ color: theme.colors.text.onPrimary, fontSize: 22, fontWeight: '800' }}>{filtered.length}</Text>
-          </View>
-        </View>
-      </LinearGradient>
+<Text style={{ color: theme.colors.text.onPrimary, opacity: 0.85, fontSize: 12 }}>Fatura Sayısı</Text>
+<Text style={{ color: theme.colors.text.onPrimary, fontSize: 22, fontWeight: '800' }}>{filtered.length}</Text>
+</View>
+</View>
+</LinearGradient>
 
       {/* Kategori Chip'leri */}
       <View style={{ paddingHorizontal: 12, paddingTop: 12 }}>
-        <FlatList
+<FlatList
           data={categories}
           keyExtractor={(it, idx) => String(it.key ?? 'all')}
           horizontal
@@ -474,8 +473,8 @@ export default function BillsOverviewScreen({ navigation, route }) {
             const active = (category ?? null) === item.key;
             return (
               <View style={{ marginRight: 8 }}>
-                <TouchableScale onPress={() => setCategory(item.key)}>
-                  <PremiumCard
+<TouchableScale onPress={() => setCategory(item.key)}>
+<PremiumCard
                     elevation={active ? "medium" : "small"}
                     padding="small"
                     style={{
@@ -483,21 +482,21 @@ export default function BillsOverviewScreen({ navigation, route }) {
                       borderColor: active ? theme.colors.primary?.[600] : theme.colors.neutral?.[200],
                     }}
                   >
-                    <Text style={{
+<Text style={{
                       color: active ? theme.colors.primary?.[700] : theme.colors.text.primary,
                       fontWeight: active ? '700' : '500',
                       fontSize: 13,
                     }}>
                       {item.label}
                     </Text>
-                  </PremiumCard>
-                </TouchableScale>
-              </View>
+</PremiumCard>
+</TouchableScale>
+</View>
             );
           }}
         />
-      </View>
-    </View>
+</View>
+</View>
   ), [theme, totals, filtered, houseName, category, isCompact]);
 
   const renderItem = useCallback(({ item: it, index: idx }) => {
@@ -520,7 +519,7 @@ export default function BillsOverviewScreen({ navigation, route }) {
 
     return (
       <View style={{ paddingHorizontal: 16, paddingVertical: 6 }}>
-        <TouchableScale
+<TouchableScale
           onPress={() =>
             navigation.navigate("BillDetail", {
               billId: it.id,
@@ -529,34 +528,34 @@ export default function BillsOverviewScreen({ navigation, route }) {
             })
           }
         >
-          <PremiumCard elevation="small" padding="medium" style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={styles.iconCircle}>
-              <Text style={{ fontSize: 22 }}>{icon}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.text.primary }}>
+<PremiumCard elevation="small" padding="medium" style={{ flexDirection: 'row', alignItems: 'center' }}>
+<View style={styles.iconCircle}>
+<Text style={{ fontSize: 22 }}>{icon}</Text>
+</View>
+<View style={{ flex: 1 }}>
+<Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.text.primary }}>
                 {label}
                 {titleSuffix}
               </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.text.secondary, marginTop: 2 }}>
+<Text style={{ fontSize: 12, color: theme.colors.text.secondary, marginTop: 2 }}>
                 {secondaryText}
               </Text>
-            </View>
-            <View style={{ alignItems: "flex-end" }}>
-              <Text style={{ fontSize: 16, fontWeight: "700", color: theme.colors.text.primary }}>
+</View>
+<View style={{ alignItems: "flex-end" }}>
+<Text style={{ fontSize: 16, fontWeight: "700", color: theme.colors.text.primary }}>
                 {formatAmount(it.amount ?? it.tutar)}
               </Text>
-            </View>
-          </PremiumCard>
-        </TouchableScale>
-      </View>
+</View>
+</PremiumCard>
+</TouchableScale>
+</View>
     );
   }, [navigation, houseId, houseName, theme]);
 
   const ListEmpty = useCallback(() => (
     <View style={[styles.empty, { paddingHorizontal: 16 }]}>
-      <Text style={styles.emptyIcon}>📄</Text>
-      <Text style={[styles.emptyText, { color: theme.colors.text.secondary }]}>
+<Text style={styles.emptyIcon}>📄</Text>
+<Text style={[styles.emptyText, { color: theme.colors.text.secondary }]}>
         {loading ? "Veriler yükleniyor..." : "Bu ay için görünür planlı gider bulunmuyor."}
       </Text>
       {!loading && <PremiumButton title="+ Düzenli Gider Ekle" size="small" onPress={handleAddBill} />}
@@ -566,15 +565,15 @@ export default function BillsOverviewScreen({ navigation, route }) {
   if (loading && items.length === 0) {
     return (
       <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary?.[500]} />
-        <Text style={{ marginTop: 8, color: theme.colors.text.secondary }}>Fatura verileri yükleniyor…</Text>
-      </View>
+<ActivityIndicator size="large" color={theme.colors.primary?.[500]} />
+<Text style={{ marginTop: 8, color: theme.colors.text.secondary }}>Fatura verileri yükleniyor…</Text>
+</View>
     );
   }
 
   return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <FlatList
+<FlatList
           ref={listRef}
           onScroll={handleScroll}
           scrollEventThrottle={16}
@@ -590,13 +589,13 @@ export default function BillsOverviewScreen({ navigation, route }) {
           windowSize={8}
           removeClippedSubviews
         />
-        <Toast
+<Toast
           visible={toast.visible}
           message={toast.message}
           type={toast.type}
           onHide={hideToast}
         />
-      </View>
+</View>
   );
 }
 
@@ -658,6 +657,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 });
+
+
 
 
 

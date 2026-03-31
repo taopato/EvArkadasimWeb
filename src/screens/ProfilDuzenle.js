@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
+  ActivityIndicator,
   Alert,
-  ActivityIndicator
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import { useCommonStyles } from '../shared/ui/CommonStyles';
 
-const ProfilDuzenle = ({ navigation }) => {
+export default function ProfilDuzenle({ navigation }) {
   const { user, updateUserData } = useAuth();
   const { theme } = useTheme();
   const CommonStyles = useCommonStyles();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -27,17 +28,17 @@ const ProfilDuzenle = ({ navigation }) => {
 
   const handleUpdate = async () => {
     if (!fullName.trim()) {
-      Alert.alert('Hata', 'Ad soyad boş olamaz');
+      Alert.alert('Hata', 'Ad soyad bos olamaz');
       return;
     }
 
     if (newPassword && newPassword !== confirmPassword) {
-      Alert.alert('Hata', 'Yeni şifreler eşleşmiyor');
+      Alert.alert('Hata', 'Yeni sifreler eslesmiyor');
       return;
     }
 
     if (newPassword && !currentPassword) {
-      Alert.alert('Hata', 'Şifre değiştirmek için mevcut şifrenizi girmelisiniz');
+      Alert.alert('Hata', 'Sifre degistirmek icin mevcut sifrenizi girmelisiniz');
       return;
     }
 
@@ -46,21 +47,20 @@ const ProfilDuzenle = ({ navigation }) => {
       const data = {
         fullName: fullName.trim(),
         currentPassword: currentPassword || null,
-        newPassword: newPassword || null
+        newPassword: newPassword || null,
       };
 
       const res = await authApi.updateProfile(user.id, data);
-      
+
       if (res.data?.success) {
-        // Auth context'i güncelle
         updateUserData({ ...user, fullName: fullName.trim() });
-        Alert.alert('Başarılı', 'Profil bilgileriniz güncellendi');
+        Alert.alert('Basarili', 'Profil bilgileriniz guncellendi');
         navigation.goBack();
       } else {
-        Alert.alert('Hata', res.data?.message || 'Güncelleme başarısız');
+        Alert.alert('Hata', res.data?.message || 'Guncelleme basarisiz');
       }
     } catch (error) {
-      Alert.alert('Hata', error?.response?.data?.message || 'Bir hata oluştu');
+      Alert.alert('Hata', error?.response?.data?.message || 'Bir hata olustu');
     } finally {
       setLoading(false);
     }
@@ -68,78 +68,131 @@ const ProfilDuzenle = ({ navigation }) => {
 
   return (
     <View style={[CommonStyles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView style={CommonStyles.content}>
+      <ScrollView
+        style={CommonStyles.content}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={CommonStyles.header}>
-          <Text style={CommonStyles.title}>Profilini Düzenle</Text>
-          <Text style={CommonStyles.subtitle}>Bilgilerini güncel tut</Text>
+          <Text style={CommonStyles.title}>Profilini Duzenle</Text>
+          <Text style={CommonStyles.subtitle}>Bilgilerini guncel tut</Text>
         </View>
 
-        <View style={CommonStyles.card}>
+        <View style={[CommonStyles.card, styles.card]}>
           <Text style={styles.label}>Ad Soyad</Text>
           <TextInput
             style={styles.input}
             value={fullName}
             onChangeText={setFullName}
             placeholder="Ad Soyad"
+            placeholderTextColor={theme.colors.text.disabled}
           />
 
           <View style={styles.divider} />
-          
-          <Text style={styles.sectionTitle}>Şifre Değiştir</Text>
-          <Text style={styles.infoText}>Şifrenizi değiştirmek istemiyorsanız bu alanları boş bırakın.</Text>
 
-          <Text style={styles.label}>Mevcut Şifre</Text>
+          <Text style={styles.sectionTitle}>Sifre Degistir</Text>
+          <Text style={styles.infoText}>Sifrenizi degistirmek istemiyorsaniz bu alanlari bos birakin.</Text>
+
+          <Text style={styles.label}>Mevcut Sifre</Text>
           <TextInput
             style={styles.input}
             value={currentPassword}
             onChangeText={setCurrentPassword}
-            placeholder="Mevcut Şifre"
+            placeholder="Mevcut Sifre"
+            placeholderTextColor={theme.colors.text.disabled}
             secureTextEntry
           />
 
-          <Text style={styles.label}>Yeni Şifre</Text>
+          <Text style={styles.label}>Yeni Sifre</Text>
           <TextInput
             style={styles.input}
             value={newPassword}
             onChangeText={setNewPassword}
-            placeholder="Yeni Şifre"
+            placeholder="Yeni Sifre"
+            placeholderTextColor={theme.colors.text.disabled}
             secureTextEntry
           />
 
-          <Text style={styles.label}>Yeni Şifre (Tekrar)</Text>
+          <Text style={styles.label}>Yeni Sifre (Tekrar)</Text>
           <TextInput
             style={styles.input}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
-            placeholder="Yeni Şifre (Tekrar)"
+            placeholder="Yeni Sifre (Tekrar)"
+            placeholderTextColor={theme.colors.text.disabled}
             secureTextEntry
           />
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.saveBtn, { backgroundColor: theme.colors.primary?.[600] }]}
           onPress={handleUpdate}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.colors.text.onPrimary} />
           ) : (
-            <Text style={styles.saveBtnText}>Değişiklikleri Kaydet</Text>
+            <Text style={styles.saveBtnText}>Degisiklikleri Kaydet</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
     </View>
   );
-};
+}
 
-const styles = StyleSheet.create({
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 15, opacity: 0.7 },
-  input: { borderWidth: 1, borderColor: '#eee', borderRadius: 12, padding: 12, fontSize: 16 },
-  divider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 25 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
-  infoText: { fontSize: 12, opacity: 0.5, marginBottom: 15 },
-  saveBtn: { marginTop: 20, padding: 18, borderRadius: 15, alignItems: 'center' },
-  saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
-});
-
-export default ProfilDuzenle;
+const makeStyles = (theme) =>
+  StyleSheet.create({
+    content: {
+      paddingBottom: 32,
+    },
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.neutral[200],
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '700',
+      marginBottom: 8,
+      marginTop: 15,
+      color: theme.colors.text.secondary,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[300],
+      borderRadius: 12,
+      padding: 12,
+      fontSize: 16,
+      color: theme.colors.text.primary,
+      backgroundColor: theme.colors.background,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.colors.neutral[200],
+      marginVertical: 25,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      marginBottom: 5,
+      color: theme.colors.text.primary,
+    },
+    infoText: {
+      fontSize: 12,
+      color: theme.colors.text.secondary,
+      marginBottom: 15,
+      lineHeight: 18,
+    },
+    saveBtn: {
+      marginTop: 20,
+      padding: 18,
+      borderRadius: 15,
+      alignItems: 'center',
+    },
+    saveBtnText: {
+      color: theme.colors.text.onPrimary,
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+  });

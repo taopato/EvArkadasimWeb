@@ -252,7 +252,7 @@ function ThemedNavigator() {
                         color: colors.text.primary,
                       }}
                     >
-                      ←
+                      {"<"}
                     </Text>
                   </Pressable>
                 ),
@@ -352,3 +352,5 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+
