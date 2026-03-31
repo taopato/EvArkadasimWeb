@@ -3,7 +3,7 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,64}$
 const SIX_DIGIT_CODE_REGEX = /^\d{6}$/;
 
 export const PASSWORD_RULES_TEXT =
-  'Sifre en az 8 karakter olmali; buyuk harf, kucuk harf, rakam ve ozel karakter icermelidir.';
+  'Şifre en az 8 karakter olmalı; büyük harf, küçük harf, rakam ve özel karakter içermelidir.';
 
 export const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 
@@ -13,22 +13,50 @@ export const isStrongPassword = (value) => PASSWORD_REGEX.test(String(value || '
 
 export const isSixDigitCode = (value) => SIX_DIGIT_CODE_REGEX.test(String(value || '').trim());
 
+export const getPasswordValidationErrors = (value) => {
+  const password = String(value || '');
+  const errors = [];
+
+  if (password.length < 8) {
+    errors.push('Şifreniz en az 8 karakter olmalıdır.');
+  }
+  if (password.length > 64) {
+    errors.push('Şifreniz en fazla 64 karakter olabilir.');
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Şifreniz en az 1 büyük harf içermelidir.');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Şifreniz en az 1 küçük harf içermelidir.');
+  }
+  if (!/\d/.test(password)) {
+    errors.push('Şifreniz en az 1 rakam içermelidir.');
+  }
+  if (!/[^A-Za-z\d]/.test(password)) {
+    errors.push('Şifreniz en az 1 özel karakter içermelidir.');
+  }
+
+  return errors;
+};
+
 export const validateRegistrationForm = ({ fullName, email, password, confirm }) => {
   const trimmedName = String(fullName || '').trim();
   if (!trimmedName || !email || !password || !confirm) {
-    return 'Lutfen tum alanlari doldurun.';
+    return 'Lütfen tüm alanları doldurun.';
   }
   if (trimmedName.length < 3) {
-    return 'Ad soyad en az 3 karakter olmali.';
+    return 'Ad soyad en az 3 karakter olmalıdır.';
   }
   if (!isValidEmail(email)) {
-    return 'Gecerli bir e-posta giriniz.';
+    return 'Geçerli bir e-posta giriniz.';
   }
-  if (!isStrongPassword(password)) {
-    return PASSWORD_RULES_TEXT;
+
+  const passwordErrors = getPasswordValidationErrors(password);
+  if (passwordErrors.length > 0 || !isStrongPassword(password)) {
+    return passwordErrors[0] || PASSWORD_RULES_TEXT;
   }
   if (password !== confirm) {
-    return 'Sifreler eslesmiyor.';
+    return 'Şifreler eşleşmiyor.';
   }
   return null;
 };

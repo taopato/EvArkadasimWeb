@@ -1,11 +1,12 @@
 // src/screens/BillsOverviewScreen.js
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
   FlatList,
+  Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../context/AuthContext";
@@ -167,6 +168,37 @@ export default function BillsOverviewScreen({ navigation, route }) {
   const [category, setCategory] = React.useState(null);
   const [paidFilter, setPaidFilter] = React.useState("all"); // all | paid | unpaid
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerBackVisible: false,
+      headerLeft: () => (
+        <Pressable
+          onPress={() => {
+            if (navigation?.canGoBack?.()) {
+              navigation.goBack();
+              return;
+            }
+            navigation.navigate("Home");
+          }}
+          hitSlop={12}
+          style={{ paddingRight: 12, paddingVertical: 4 }}
+        >
+          <Text
+            style={{
+              fontSize: 24,
+              lineHeight: 24,
+              fontWeight: "500",
+              color: theme.colors.text.primary,
+            }}
+          >
+            �
+          </Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation, theme]);
+
+
   const showToast = (message, type = "success") =>
     setToast({ visible: true, message, type });
   const hideToast = () => setToast((p) => ({ ...p, visible: false }));
@@ -211,23 +243,23 @@ export default function BillsOverviewScreen({ navigation, route }) {
         if (k && UTILITY_META[k]) idToKey.set(rid, k);
       }
 
-      // Eksik kalan parent kategorilerini BE'den tamamla
-      const missingParentIds = new Set();
+      // Eksik parent kategorilerini tekrar API'den isteme:
+      // silinmiş plan ebeveynleri 500 üretebiliyor. Önce child kayıttan türet.
       for (const x of normalized) {
         const raw = x._raw || {};
-        const pid = raw.parentExpenseId ?? raw.ParentExpenseId;
-        if (pid != null && !idToKey.has(Number(pid))) missingParentIds.add(Number(pid));
-      }
-      if (missingParentIds.size > 0) {
-        const parentIdArr = Array.from(missingParentIds);
-        await Promise.all(parentIdArr.map(async (pid) => {
-          try {
-            const res = await expensesApi.getById(pid);
-            const pr = res?.data?.data ?? res?.data ?? {};
-            const k = getKeyFromRaw(pr);
-            if (k && UTILITY_META[k]) idToKey.set(Number(pid), k);
-          } catch {}
-        }));
+        const pid = Number(raw.parentExpenseId ?? raw.ParentExpenseId);
+        if (!Number.isFinite(pid) || idToKey.has(pid)) continue;
+
+        const inferredKey = pickUtilityKey(x);
+        if (inferredKey && UTILITY_META[inferredKey]) {
+          idToKey.set(pid, inferredKey);
+          continue;
+        }
+
+        const hintedKey = getParentCategoryHint(pid);
+        if (hintedKey && UTILITY_META[hintedKey]) {
+          idToKey.set(pid, hintedKey);
+        }
       }
 
       const normalizedWithKeys = normalized.map(x => {
@@ -259,6 +291,7 @@ export default function BillsOverviewScreen({ navigation, route }) {
 
         // plan sinyal/çocuk
         const isChild = parentId != null;
+        const isParent = parentId == null;
         const installmentCount = Number(
           raw.installmentCount ?? raw.InstallmentCount ?? 0
         );
@@ -272,24 +305,24 @@ export default function BillsOverviewScreen({ navigation, route }) {
             null) != null;
 
         // Utility değişken faturaları (Elektrik/Su/Doğalgaz) plan sinyali olmasa da göster
-        const keyKForFilter = toUtilityKey(pickUtilityKey(x));
+        const keyKForFilter = toUtilityKey(x.key || pickUtilityKey(x));
         const isVariableUtility = keyKForFilter === 'Water' || keyKForFilter === 'Electricity' || keyKForFilter === 'Gas';
 
-        // Yalnız planlı kayıtlar (child veya plan sinyali taşıyanlar)
-        if (!(isChild || hasPlanSignals || isVariableUtility)) return false;
+        // Elektrik / su / doğalgaz için görünür aylık kayıtları göster.
+        if (isVariableUtility) {
+          const d = getItemDate(x);
+          if (!(d >= monthStart && d < monthEnd)) return false;
+          if (d > now) return false;
+          return true;
+        }
 
-        // Parent asla gösterilmez
-        if (!isChild && hasPlanSignals) return false;
+        // Parent planlar (kira / düzenli gider / taksit planı) burada her zaman görünür.
+        if (isParent && hasPlanSignals) return true;
 
-        // Child değilse (single), utility olmayanları çıkar
-        if (!isChild && !isUtilityKey(keyKForFilter)) return false;
+        // Child planları bu ekranda ayrıca listelemiyoruz; parent kartı sürekli görünür kalır.
+        if (isChild) return false;
 
-        // Bu ay ve bugün/öncesi
-        const d = getItemDate(x);
-        if (!(d >= monthStart && d < monthEnd)) return false;
-        if (d > now) return false;
-
-        return true;
+        return false;
       });
 
       // parentId+YYYY-MM bazında ‘ayda tek çocuk’
@@ -408,17 +441,17 @@ export default function BillsOverviewScreen({ navigation, route }) {
         end={{ x: 1, y: 1 }}
         style={{ paddingTop: 18, paddingBottom: 18, paddingHorizontal: 16, borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}
       >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ flexDirection: isCompact ? 'column' : 'row', justifyContent: 'space-between', alignItems: isCompact ? 'flex-start' : 'center', gap: isCompact ? 12 : 0 }}>
           <Text style={{ color: theme.colors.text.onPrimary, fontSize: 20, fontWeight: '800' }}>Planlı Giderler</Text>
           <PremiumButton title="Plan Ekle" size="small" onPress={handleAddBill} />
         </View>
         <Text style={{ color: theme.colors.text.onPrimary, opacity: 0.9, marginTop: 6 }}>{houseName}</Text>
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 14 }}>
+        <View style={{ flexDirection: isCompact ? 'column' : 'row', gap: 12, marginTop: 14 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.colors.text.onPrimary, opacity: 0.85, fontSize: 12 }}>Toplam</Text>
             <Text style={{ color: theme.colors.text.onPrimary, fontSize: 22, fontWeight: '800' }}>{formatAmount(totals.all)}</Text>
           </View>
-          <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+          {!isCompact && <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />}
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.colors.text.onPrimary, opacity: 0.85, fontSize: 12 }}>Fatura Sayısı</Text>
             <Text style={{ color: theme.colors.text.onPrimary, fontSize: 22, fontWeight: '800' }}>{filtered.length}</Text>
@@ -466,7 +499,7 @@ export default function BillsOverviewScreen({ navigation, route }) {
 
   const renderItem = useCallback(({ item: it, index: idx }) => {
     const raw = it._raw || {};
-    const keyK = toUtilityKey(pickUtilityKey(it));
+    const keyK = toUtilityKey(it.key || pickUtilityKey(it));
     const d = getItemDate(it);
     const catRaw = raw.category ?? raw.Category ?? raw.categoryId ?? raw.CategoryId ?? keyK;
     const icon = getCatIcon(catRaw);
@@ -475,7 +508,12 @@ export default function BillsOverviewScreen({ navigation, route }) {
     const cnt = raw.installmentCount || raw.InstallmentCount || null;
     const parentId = raw.parentExpenseId ?? raw.ParentExpenseId ?? null;
     const isChild = parentId != null;
+    const dueDay = raw.dueDay ?? raw.DueDay ?? null;
+    const isParentPlan = !isChild && ((raw.planStartMonth ?? raw.PlanStartMonth ?? null) != null || dueDay != null || Number(raw.installmentCount ?? raw.InstallmentCount ?? 0) > 1);
     const titleSuffix = keyK === "Other" && isChild && idxNo != null && cnt != null ? ` • Taksit ${idxNo}/${cnt}` : "";
+    const secondaryText = isParentPlan
+      ? `${cnt > 1 ? `${cnt} ay plan` : 'Aylık plan'}${dueDay ? ` • Her ay ${dueDay}. gün` : ''}`
+      : `Tarih: ${d.toLocaleDateString("tr-TR")}`;
 
     return (
       <View style={{ paddingHorizontal: 16, paddingVertical: 6 }}>
@@ -498,7 +536,7 @@ export default function BillsOverviewScreen({ navigation, route }) {
                 {titleSuffix}
               </Text>
               <Text style={{ fontSize: 12, color: theme.colors.text.secondary, marginTop: 2 }}>
-                Tarih: {d.toLocaleDateString("tr-TR")}
+                {secondaryText}
               </Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
@@ -587,7 +625,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     alignItems: "center",
-    elevation: 2,
   },
   summaryLabel: { fontSize: 12 },
   summaryAmount: {
@@ -618,3 +655,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 });
+
+
+
+

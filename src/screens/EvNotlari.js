@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useTheme } from '../shared/theme/ThemeProvider';
@@ -26,7 +27,9 @@ const normalizeBoard = (payload) => {
 export default function EvNotlari({ route }) {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { width } = useWindowDimensions();
+  const isCompact = width < 520;
+  const styles = useMemo(() => makeStyles(theme, isCompact), [theme, isCompact]);
 
   const houseId = Number(route?.params?.houseId || user?.defaultHouseId || 0);
   const houseName = route?.params?.houseName || user?.defaultHouseName || 'Ev Notları';
@@ -128,7 +131,7 @@ export default function EvNotlari({ route }) {
 
   const handleDeleteItem = async (itemId, mode = 'active') => {
     const confirmed = await askConfirm(
-      'Notu kaldır',
+      mode === 'active' ? 'Notu sil' : 'Geçmiş notu kaldır',
       mode === 'active'
         ? 'Bu madde görünümden kaldırılacak, veritabanında saklanmaya devam edecek.'
         : 'Bu geçmiş not görünümden kaldırılacak, veritabanında saklanmaya devam edecek.'
@@ -138,6 +141,13 @@ export default function EvNotlari({ route }) {
 
     try {
       await houseNotesApi.deleteItem(itemId);
+      setSections((prev) =>
+        prev.map((section) => ({
+          ...section,
+          items: section.items.filter((item) => item.id !== itemId),
+          completedItems: section.completedItems.filter((item) => item.id !== itemId),
+        }))
+      );
       await loadBoard();
     } catch (error) {
       Alert.alert('Hata', error?.response?.data?.message || 'Madde silinemedi.');
@@ -154,6 +164,7 @@ export default function EvNotlari({ route }) {
 
     try {
       await houseNotesApi.deleteSection(sectionId);
+      setSections((prev) => prev.filter((section) => section.id !== sectionId));
       await loadBoard();
     } catch (error) {
       Alert.alert('Hata', error?.response?.data?.message || 'Başlık silinemedi.');
@@ -168,7 +179,10 @@ export default function EvNotlari({ route }) {
       <View style={styles.sectionHeaderRow}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>{section.title}</Text>
         <TouchableOpacity
-          style={[styles.headerDeleteBtn, { backgroundColor: theme.colors.error[50], borderColor: theme.colors.error[100] }]}
+          style={[
+            styles.headerDeleteBtn,
+            { backgroundColor: theme.colors.error[50], borderColor: theme.colors.error[100] },
+          ]}
           onPress={() => handleDeleteSection(section.id, section.title)}
         >
           <Text style={[styles.headerDeleteText, { color: theme.colors.error[700] }]}>Başlığı sil</Text>
@@ -235,12 +249,18 @@ export default function EvNotlari({ route }) {
         <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>{section.title}</Text>
       </View>
       <Text style={[styles.sectionHint, { color: theme.colors.text.secondary }]}>
-        Tamamlanan maddeler aktif listeden kalkar, burada arşivlenir. Buradan kaldırılanlar artık görünmez.
+        Tamamlanan maddeler aktif listeden kalkar, burada arşivlenir. Buradan kaldırılanlar artık
+        görünmez.
       </Text>
 
       {section.completedItems.map((item) => (
         <View key={`done-${item.id}`} style={styles.itemRow}>
-          <View style={[styles.circleBtn, { borderColor: theme.colors.success[400], backgroundColor: theme.colors.success[50] }]}>
+          <View
+            style={[
+              styles.circleBtn,
+              { borderColor: theme.colors.success[400], backgroundColor: theme.colors.success[50] },
+            ]}
+          >
             <Text style={[styles.circleText, { color: theme.colors.success[700] }]}>OK</Text>
           </View>
           <Text style={[styles.itemText, styles.completedText, { color: theme.colors.text.secondary }]}>
@@ -265,16 +285,27 @@ export default function EvNotlari({ route }) {
         <View style={styles.hero}>
           <Text style={[styles.title, { color: theme.colors.text.primary }]}>{houseName}</Text>
           <Text style={[styles.subtitle, { color: theme.colors.text.secondary }]}>
-            Market, ev içi işler ve alınacaklar listesi tüm ev üyeleri tarafından görülüp yönetilebilir.
+            Market, ev içi işler ve alınacaklar listesi tüm ev üyeleri tarafından görülüp
+            yönetilebilir.
           </Text>
         </View>
 
         <View style={styles.summaryRow}>
-          <View style={[styles.summaryBox, { backgroundColor: theme.colors.primary[50], borderColor: theme.colors.primary[100] }]}>
+          <View
+            style={[
+              styles.summaryBox,
+              { backgroundColor: theme.colors.primary[50], borderColor: theme.colors.primary[100] },
+            ]}
+          >
             <Text style={[styles.summaryLabel, { color: theme.colors.text.secondary }]}>Aktif</Text>
             <Text style={[styles.summaryValue, { color: theme.colors.text.primary }]}>{activeItemCount}</Text>
           </View>
-          <View style={[styles.summaryBox, { backgroundColor: theme.colors.success[50], borderColor: theme.colors.success[100] }]}>
+          <View
+            style={[
+              styles.summaryBox,
+              { backgroundColor: theme.colors.success[50], borderColor: theme.colors.success[100] },
+            ]}
+          >
             <Text style={[styles.summaryLabel, { color: theme.colors.text.secondary }]}>Geçmiş</Text>
             <Text style={[styles.summaryValue, { color: theme.colors.text.primary }]}>{completedItemCount}</Text>
           </View>
@@ -313,7 +344,12 @@ export default function EvNotlari({ route }) {
             style={[styles.tabBtn, activeTab === 'active' && { backgroundColor: theme.colors.primary[600] }]}
             onPress={() => setActiveTab('active')}
           >
-            <Text style={[styles.tabText, { color: activeTab === 'active' ? theme.colors.text.onPrimary : theme.colors.text.secondary }]}>
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === 'active' ? theme.colors.text.onPrimary : theme.colors.text.secondary },
+              ]}
+            >
               Aktif Notlar
             </Text>
           </TouchableOpacity>
@@ -321,7 +357,12 @@ export default function EvNotlari({ route }) {
             style={[styles.tabBtn, activeTab === 'history' && { backgroundColor: theme.colors.success[600] }]}
             onPress={() => setActiveTab('history')}
           >
-            <Text style={[styles.tabText, { color: activeTab === 'history' ? theme.colors.text.onPrimary : theme.colors.text.secondary }]}>
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === 'history' ? theme.colors.text.onPrimary : theme.colors.text.secondary },
+              ]}
+            >
               Geçmiş Notlar
             </Text>
           </TouchableOpacity>
@@ -352,14 +393,14 @@ export default function EvNotlari({ route }) {
   );
 }
 
-const makeStyles = (theme) =>
+const makeStyles = (theme, isCompact) =>
   StyleSheet.create({
     container: { flex: 1 },
-    content: { padding: 12, paddingBottom: 20 },
+    content: { padding: 12, paddingBottom: 28 },
     hero: { marginBottom: 12 },
     title: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
     subtitle: { fontSize: 12, lineHeight: 18 },
-    summaryRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+    summaryRow: { flexDirection: isCompact ? 'column' : 'row', gap: 10, marginBottom: 12 },
     summaryBox: {
       flex: 1,
       borderRadius: 14,
@@ -375,14 +416,14 @@ const makeStyles = (theme) =>
       marginBottom: 12,
     },
     sectionHeaderRow: {
-      flexDirection: 'row',
+      flexDirection: isCompact ? 'column' : 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 8,
       marginBottom: 10,
     },
     sectionTitle: { fontSize: 14, fontWeight: '800' },
-    inlineRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+    inlineRow: { flexDirection: isCompact ? 'column' : 'row', gap: 8, alignItems: 'center' },
     input: {
       borderWidth: 1,
       borderRadius: 10,
@@ -396,6 +437,7 @@ const makeStyles = (theme) =>
       paddingVertical: 10,
       minWidth: 66,
       alignItems: 'center',
+      width: isCompact ? '100%' : undefined,
     },
     addBtnText: { fontWeight: '800', fontSize: 13 },
     loadingWrap: { paddingVertical: 28, alignItems: 'center' },

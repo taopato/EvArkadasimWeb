@@ -1,6 +1,7 @@
 // src/shared/ui/CommonStyles.js
 import { StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { shadow } from './shadow';
 
 export const makeColorThemes = (theme) => ({
   primary:   { background: theme.colors.primary?.[500], foreground: theme.colors.text?.onPrimary },
@@ -40,11 +41,7 @@ export const makeCommonStyles = (theme) => StyleSheet.create({
     borderRadius: theme.radius?.lg ?? 16,
     padding: theme.spacing?.lg ?? 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    ...shadow(1, 'rgba(0,0,0,0.12)'),
   },
 
   // Inputs

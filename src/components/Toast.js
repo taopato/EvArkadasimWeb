@@ -10,6 +10,7 @@ import {
   Platform
 } from 'react-native';
 import { useTheme } from '../shared/theme/ThemeProvider';
+import { shadow } from '../shared/ui/shadow';
 
 const { width } = Dimensions.get('window');
 
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
     right: 20,
     zIndex: 9999,
     borderRadius: 12,
-    elevation: 8,
+    ...shadow(3, 'rgba(0,0,0,0.18)'),
   },
   toastContent: {
     flexDirection: 'row',

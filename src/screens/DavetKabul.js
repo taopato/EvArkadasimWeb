@@ -17,6 +17,7 @@ import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import {
   PASSWORD_RULES_TEXT,
+  getPasswordValidationErrors,
   validateRegistrationForm,
 } from '../shared/validation/authValidation';
 
@@ -31,6 +32,11 @@ const getWebInviteParams = () => {
     houseId: Number(params.get('houseId')) || 0,
     email: params.get('email') || '',
   };
+};
+
+const redirectWebToHome = () => {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  window.history.replaceState({}, '', `${window.location.origin}/`);
 };
 
 export default function DavetKabul({ navigation, route }) {
@@ -53,7 +59,7 @@ export default function DavetKabul({ navigation, route }) {
 
   useEffect(() => {
     if (!token) {
-      showError('Gecersiz davet linki.');
+      showError('Geçersiz davet linki.');
     }
   }, [token, showError]);
 
@@ -73,6 +79,7 @@ export default function DavetKabul({ navigation, route }) {
       }
     }
 
+    redirectWebToHome();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Home' }],
@@ -81,14 +88,14 @@ export default function DavetKabul({ navigation, route }) {
 
   const handleJoinWithExistingAccount = async () => {
     if (!token) {
-      showError('Davet linki gecersiz.');
+      showError('Davet linki geçersiz.');
       return;
     }
 
     setJoiningExisting(true);
     try {
       const response = await houseApi.acceptInvitation(token);
-      showSuccess(response?.data?.message || 'Eve basariyla katildiniz.');
+      showSuccess(response?.data?.message || 'Eve başarıyla katıldınız.');
       await finalizeJoin(response?.data?.houseId);
     } catch (error) {
       showError(error?.response?.data?.message || error?.message || 'Davet kabul edilemedi.');
@@ -104,7 +111,7 @@ export default function DavetKabul({ navigation, route }) {
       return;
     }
     if (!token) {
-      showError('Davet tokeni bulunamadi.');
+      showError('Davet tokeni bulunamadı.');
       return;
     }
 
@@ -120,14 +127,14 @@ export default function DavetKabul({ navigation, route }) {
 
       const data = res?.data;
       if (!data?.token || !data?.user) {
-        throw new Error(data?.raw?.message || 'Kayit islemi basarisiz.');
+        throw new Error(data?.raw?.message || 'Kayıt işlemi başarısız.');
       }
 
       await login(data.user, data.token);
-      showSuccess('Hesabiniz olusturuldu ve eve eklendiniz.');
+      showSuccess('Hesabınız oluşturuldu ve eve eklendiniz.');
       await finalizeJoin(data?.joinedHouseId);
     } catch (e) {
-      const errMsg = e?.response?.data?.message || e?.message || 'Kayit sirasinda bir hata olustu.';
+      const errMsg = e?.response?.data?.message || e?.message || 'Kayıt sırasında bir hata oluştu.';
       showError(errMsg);
     } finally {
       setLoading(false);
@@ -138,15 +145,15 @@ export default function DavetKabul({ navigation, route }) {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: theme.colors.background }]}>
         <Text style={styles.heroEmoji}>!</Text>
-        <Text style={[styles.title, { color: theme.colors.text.primary }]}>Gecersiz Davet Linki</Text>
+        <Text style={[styles.title, { color: theme.colors.text.primary }]}>Geçersiz Davet Linki</Text>
         <Text style={[styles.subtitle, { color: theme.colors.text.secondary }]}>
-          Bu davet linki gecersiz veya suresi dolmus olabilir.
+          Bu davet linki geçersiz veya süresi dolmuş olabilir.
         </Text>
         <TouchableOpacity
           style={[styles.btn, { backgroundColor: theme.colors.primary?.[600], width: '100%' }]}
           onPress={() => navigation.navigate('Login')}
         >
-          <Text style={[styles.btnText, { color: theme.colors.text.onPrimary }]}>Giris Sayfasina Don</Text>
+          <Text style={[styles.btnText, { color: theme.colors.text.onPrimary }]}>Giriş Sayfasına Dön</Text>
         </TouchableOpacity>
       </View>
     );
@@ -166,7 +173,7 @@ export default function DavetKabul({ navigation, route }) {
           <Text style={styles.heroEmoji}>EV</Text>
           <Text style={[styles.title, { color: theme.colors.text.primary }]}>Bu eve davet edildiniz</Text>
           <Text style={[styles.subtitle, { color: theme.colors.text.secondary }]}>
-            Hesabiniz varsa dogrudan katilin, yoksa bu ekrandan yeni hesap olusturun.
+            Hesabınız varsa doğrudan katılın, yoksa bu ekrandan yeni hesap oluşturun.
           </Text>
         </View>
 
@@ -183,13 +190,13 @@ export default function DavetKabul({ navigation, route }) {
           >
             <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>Mevcut hesapla devam et</Text>
             <Text style={[styles.info, { color: theme.colors.text.secondary }]}>
-              Giris yaptiginiz hesap: {user?.email || 'Bilinmeyen hesap'}
+              Giriş yaptığınız hesap: {user?.email || 'Bilinmeyen hesap'}
             </Text>
 
             {invitedEmail && !activeUserMatchesInvite ? (
               <>
                 <Text style={[styles.warning, { color: theme.colors.warning?.[700] || '#b45309' }]}>
-                  Bu davet {invitedEmail} adresine gonderildi. Bu eve katilmak icin o hesapla giris yapmaniz gerekir.
+                  Bu davet {invitedEmail} adresine gönderildi. Bu eve katılmak için o hesapla giriş yapmanız gerekir.
                 </Text>
                 <TouchableOpacity
                   style={[styles.secondaryBtn, { borderColor: theme.colors.neutral?.[300] }]}
@@ -202,7 +209,7 @@ export default function DavetKabul({ navigation, route }) {
                     });
                   }}
                 >
-                  <Text style={[styles.secondaryBtnText, { color: theme.colors.text.primary }]}>Hesabi degistir</Text>
+                  <Text style={[styles.secondaryBtnText, { color: theme.colors.text.primary }]}>Hesabı değiştir</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -214,7 +221,7 @@ export default function DavetKabul({ navigation, route }) {
                 {joiningExisting ? (
                   <ActivityIndicator color={theme.colors.text.onPrimary} />
                 ) : (
-                  <Text style={[styles.btnText, { color: theme.colors.text.onPrimary }]}>Mevcut hesabimla eve katil</Text>
+                  <Text style={[styles.btnText, { color: theme.colors.text.onPrimary }]}>Mevcut hesabımla eve katıl</Text>
                 )}
               </TouchableOpacity>
             )}
@@ -232,9 +239,9 @@ export default function DavetKabul({ navigation, route }) {
               },
             ]}
           >
-            <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>Zaten hesabiniz var mi?</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>Zaten hesabınız var mı?</Text>
             <Text style={[styles.info, { color: theme.colors.text.secondary }]}>
-              Once giris yapin, sonra bu davet otomatik olarak hesabiniza baglanip evi acsin.
+              Önce giriş yapın, sonra bu davet otomatik olarak hesabınıza bağlanıp evi açsın.
             </Text>
             <TouchableOpacity
               style={[styles.secondaryBtn, { borderColor: theme.colors.primary?.[300] }]}
@@ -246,7 +253,7 @@ export default function DavetKabul({ navigation, route }) {
                 })
               }
             >
-              <Text style={[styles.secondaryBtnText, { color: theme.colors.primary?.[700] }]}>Hesabim var, giris yapacagim</Text>
+              <Text style={[styles.secondaryBtnText, { color: theme.colors.primary?.[700] }]}>Hesabım var, giriş yapacağım</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -261,7 +268,7 @@ export default function DavetKabul({ navigation, route }) {
               },
             ]}
           >
-            <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>Yeni hesap olustur</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text.primary }]}>Yeni hesap oluştur</Text>
 
             <Text style={[styles.label, { color: theme.colors.text.primary }]}>Ad Soyad</Text>
             <TextInput
@@ -273,11 +280,12 @@ export default function DavetKabul({ navigation, route }) {
                   backgroundColor: theme.colors.surface,
                 },
               ]}
-              placeholder="Adiniz ve soyadiniz"
+              placeholder="Adınız ve soyadınız"
               placeholderTextColor={theme.colors.text.disabled}
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
+              autoCorrect={false}
             />
 
             <Text style={[styles.label, { color: theme.colors.text.primary }]}>E-posta</Text>
@@ -300,11 +308,11 @@ export default function DavetKabul({ navigation, route }) {
             />
             {!!invitedEmail && (
               <Text style={[styles.hint, { color: theme.colors.text.secondary }]}>
-                Davet bu e-posta adresine gonderildi.
+                Davet bu e-posta adresine gönderildi.
               </Text>
             )}
 
-            <Text style={[styles.label, { color: theme.colors.text.primary }]}>Sifre</Text>
+            <Text style={[styles.label, { color: theme.colors.text.primary }]}>Şifre</Text>
             <TextInput
               style={[
                 styles.input,
@@ -314,15 +322,22 @@ export default function DavetKabul({ navigation, route }) {
                   backgroundColor: theme.colors.surface,
                 },
               ]}
-              placeholder="Guclu bir sifre olusturun"
+              placeholder="Güçlü bir şifre oluşturun"
               placeholderTextColor={theme.colors.text.disabled}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
             />
             <Text style={[styles.info, { color: theme.colors.text.secondary }]}>{PASSWORD_RULES_TEXT}</Text>
+            {getPasswordValidationErrors(password).map((message) => (
+              <Text key={message} style={[styles.passwordRule, { color: theme.colors.warning?.[700] || '#b45309' }]}>
+                • {message}
+              </Text>
+            ))}
 
-            <Text style={[styles.label, { color: theme.colors.text.primary }]}>Sifre Tekrar</Text>
+            <Text style={[styles.label, { color: theme.colors.text.primary }]}>Şifre Tekrar</Text>
             <TextInput
               style={[
                 styles.input,
@@ -332,12 +347,19 @@ export default function DavetKabul({ navigation, route }) {
                   backgroundColor: theme.colors.surface,
                 },
               ]}
-              placeholder="Sifrenizi tekrar girin"
+              placeholder="Şifrenizi tekrar girin"
               placeholderTextColor={theme.colors.text.disabled}
               value={confirm}
               onChangeText={setConfirm}
               secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
             />
+            {!!confirm && password !== confirm && (
+              <Text style={[styles.passwordRule, { color: theme.colors.error?.[700] || '#b91c1c' }]}>
+                • Şifreler birebir aynı olmalıdır.
+              </Text>
+            )}
 
             <TouchableOpacity
               style={[styles.btn, { backgroundColor: theme.colors.success?.[600] || theme.colors.primary?.[600] }]}
@@ -347,7 +369,7 @@ export default function DavetKabul({ navigation, route }) {
               {loading ? (
                 <ActivityIndicator color={theme.colors.text.onPrimary} />
               ) : (
-                <Text style={[styles.btnText, { color: theme.colors.text.onPrimary }]}>Hesap olustur ve eve katil</Text>
+                <Text style={[styles.btnText, { color: theme.colors.text.onPrimary }]}>Hesap oluştur ve eve katıl</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -363,7 +385,7 @@ function makeStyles(theme) {
   return StyleSheet.create({
     container: { flex: 1 },
     centered: { justifyContent: 'center', alignItems: 'center', padding: 24 },
-    scrollContent: { padding: 20, flexGrow: 1 },
+    scrollContent: { padding: 20, flexGrow: 1, paddingBottom: 32 },
     heroSection: { alignItems: 'center', paddingVertical: 24 },
     heroEmoji: { fontSize: 44, fontWeight: '900', marginBottom: 12 },
     title: { fontSize: 26, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
@@ -374,6 +396,7 @@ function makeStyles(theme) {
     input: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 16 },
     hint: { marginTop: 4, fontSize: 12 },
     info: { marginTop: 8, fontSize: 13, lineHeight: 19 },
+    passwordRule: { marginTop: 6, fontSize: 12, lineHeight: 18 },
     warning: { marginTop: 10, fontSize: 13, lineHeight: 19, fontWeight: '600' },
     btn: { paddingVertical: 14, borderRadius: 12, marginTop: 16, alignItems: 'center' },
     btnText: { fontWeight: '800', fontSize: 15 },

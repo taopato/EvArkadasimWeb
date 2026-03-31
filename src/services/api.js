@@ -94,7 +94,21 @@ export const authApi = {
       const authHeader = res?.headers?.authorization || res?.headers?.Authorization;
       const tokenFromHeader = typeof authHeader === 'string' ? authHeader.replace(/^[Bb]earer\s+/,'') : undefined;
       const token = tokenFromBody || tokenFromHeader;
-      const user = pickFirst(data, ['user', 'userDto', 'account', 'profile']) || pickFirst(raw, ['user', 'userDto', 'account', 'profile']);
+      let user = pickFirst(data, ['user', 'userDto', 'account', 'profile']) || pickFirst(raw, ['user', 'userDto', 'account', 'profile']);
+
+      if (!user) {
+        const userId = pickFirst(data, ['userId', 'id']) || pickFirst(raw, ['userId', 'id']);
+        const fullName = pickFirst(data, ['fullName', 'name']) || pickFirst(raw, ['fullName', 'name']);
+        const email = pickFirst(data, ['email', 'mail']) || pickFirst(raw, ['email', 'mail']);
+
+        if (userId || fullName || email) {
+          user = {
+            id: userId ?? 0,
+            fullName: fullName ?? email ?? '',
+            email: email ?? '',
+          };
+        }
+      }
 
       // Normalize edilmiş dönüş: LoginScreen daha kolay karar verebilsin
       return { data: { token, user, raw } };
@@ -112,8 +126,27 @@ export const authApi = {
         clearTimeout(timeoutId);
         const raw = await res.json().catch(() => ({}));
         const data = raw?.data ?? raw ?? {};
-        const token = data?.token || data?.accessToken || undefined;
-        const user = data?.user || data?.userDto || undefined;
+        const token =
+          data?.token ||
+          data?.accessToken ||
+          raw?.token ||
+          raw?.accessToken ||
+          undefined;
+        let user = data?.user || data?.userDto || raw?.user || raw?.userDto || undefined;
+
+        if (!user) {
+          const userId = data?.userId ?? data?.id ?? raw?.userId ?? raw?.id;
+          const fullName = data?.fullName ?? data?.name ?? raw?.fullName ?? raw?.name;
+          const email = data?.email ?? data?.mail ?? raw?.email ?? raw?.mail;
+
+          if (userId || fullName || email) {
+            user = {
+              id: userId ?? 0,
+              fullName: fullName ?? email ?? '',
+              email: email ?? '',
+            };
+          }
+        }
         return { data: { token, user, raw } };
       } catch (fallbackErr) {
         throw err;

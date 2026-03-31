@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -36,15 +37,18 @@ const parseIntFromTR = (value) => {
 const QUICK_EXPENSES = [
   { key: 'Market', label: 'Market' },
   { key: 'Food', label: 'Yemek' },
-  { key: 'Other', label: 'Diger' },
+  { key: 'Other', label: 'Diğer' },
 ];
 
 export default function AddExpenseScreen({ navigation, route }) {
   const { user } = useAuth();
   const activeHouseId = Number(route?.params?.houseId || user?.defaultHouseId || 0);
+  const houseName = route?.params?.houseName || user?.defaultHouseName || '';
+  const { width } = useWindowDimensions();
+  const isCompact = width < 520;
   const CommonStyles = useCommonStyles();
   const { theme } = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, isCompact), [theme, isCompact]);
 
   const [amount, setAmount] = useState('');
   const [categoryKey, setCategoryKey] = useState('');
@@ -62,7 +66,7 @@ export default function AddExpenseScreen({ navigation, route }) {
 
   useEffect(() => {
     if (!activeHouseId) {
-      Alert.alert('Hata', 'Aktif bir ev grubu bulunamadi.');
+      Alert.alert('Hata', 'Aktif bir ev grubu bulunamadı.');
       navigation.navigate('GrupListesi');
       return;
     }
@@ -77,7 +81,7 @@ export default function AddExpenseScreen({ navigation, route }) {
       const list = (Array.isArray(raw) ? raw : [])
         .map((member) => ({
           id: Number(member.userId ?? member.user?.id ?? member.id),
-          fullName: member.fullName ?? member.name ?? member.user?.fullName ?? 'Uye',
+          fullName: member.fullName ?? member.name ?? member.user?.fullName ?? 'Üye',
         }))
         .filter((member) => Number.isFinite(member.id));
 
@@ -91,7 +95,7 @@ export default function AddExpenseScreen({ navigation, route }) {
       });
       setPersonal(initialPersonal);
     } catch (error) {
-      console.error('Uyeler alinamadi:', error?.response?.data || error?.message);
+      console.error('Üyeler alınamadı:', error?.response?.data || error?.message);
       setMembers([]);
     } finally {
       setLoading(false);
@@ -102,15 +106,15 @@ export default function AddExpenseScreen({ navigation, route }) {
 
   const save = async () => {
     if (!amountNum || amountNum <= 0) {
-      Alert.alert('Hata', 'Gecerli bir tutar girin.');
+      Alert.alert('Hata', 'Geçerli bir tutar girin.');
       return;
     }
     if (!categoryKey) {
-      Alert.alert('Hata', 'Bir kategori secin.');
+      Alert.alert('Hata', 'Bir kategori seçin.');
       return;
     }
     if (!payerId) {
-      Alert.alert('Hata', 'Odemeyi yapan kisiyi secin.');
+      Alert.alert('Hata', 'Ödemeyi yapan kişiyi seçin.');
       return;
     }
 
@@ -126,7 +130,7 @@ export default function AddExpenseScreen({ navigation, route }) {
     });
 
     if (personalTotal > amountNum) {
-      Alert.alert('Hata', 'Kisisel toplam, genel toplamdan buyuk olamaz.');
+      Alert.alert('Hata', 'Kişisel toplam, genel toplamdan büyük olamaz.');
       return;
     }
 
@@ -156,16 +160,23 @@ export default function AddExpenseScreen({ navigation, route }) {
 
     try {
       setLoading(true);
-      await expensesApi.create(payload);
+      const response = await expensesApi.create(payload);
+      const data = response?.data?.data ?? response?.data ?? {};
+      const participantCount = Number(data?.activeParticipantCount ?? 0);
+      const detailMessage = participantCount > 0
+        ? `Harcama kaydedildi. Paylaşım ${participantCount} aktif üyeye göre hesaplandı.`
+        : (data?.message || 'Harcama kaydedildi.');
       try {
         const bus = (await import('../shared/events/bus')).default;
         bus.emit('expenses:updated', { houseId: activeHouseId });
       } catch {}
-      showToast('Harcama kaydedildi.', 'success');
-      setTimeout(() => navigation.goBack(), 800);
+      showToast(detailMessage, 'success');
+      setTimeout(() => {
+        navigation.replace('TumHarcamalar', { houseId: activeHouseId, houseName });
+      }, 800);
     } catch (error) {
-      console.error('Harcama kaydi hatasi:', error?.response?.data || error?.message);
-      showToast('Kayit sirasinda bir hata olustu.', 'error');
+      console.error('Harcama kayıt hatası:', error?.response?.data || error?.message);
+      showToast(error?.response?.data?.message || 'Kayıt sırasında bir hata oluştu.', 'error');
     } finally {
       setLoading(false);
     }
@@ -198,11 +209,11 @@ export default function AddExpenseScreen({ navigation, route }) {
       if (receipt?.id) {
         navigation.navigate('FisDetayi', { receiptId: receipt.id, houseId: activeHouseId });
       } else {
-        showToast('Fis yuklendi ama detay acilamadi.', 'error');
+        showToast('Fiş yüklendi ama detay açılamadı.', 'error');
       }
     } catch (error) {
-      console.error('Fis yukleme hatasi:', error?.response?.data || error?.message);
-      showToast('Fis yuklenirken bir hata olustu.', 'error');
+      console.error('Fiş yükleme hatası:', error?.response?.data || error?.message);
+      showToast(error?.response?.data?.message || 'Fiş yüklenirken bir hata oluştu.', 'error');
     } finally {
       setScanningReceipt(false);
     }
@@ -211,7 +222,7 @@ export default function AddExpenseScreen({ navigation, route }) {
   const openGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Izin gerekli', 'Galeriden fis yuklemek icin izin vermelisin.');
+      Alert.alert('İzin gerekli', 'Galeriden fiş yüklemek için izin vermelisin.');
       return;
     }
 
@@ -229,7 +240,7 @@ export default function AddExpenseScreen({ navigation, route }) {
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Izin gerekli', 'Kamera ile fis cekmek icin izin vermelisin.');
+      Alert.alert('İzin gerekli', 'Kamera ile fiş çekmek için izin vermelisin.');
       return;
     }
 
@@ -244,36 +255,52 @@ export default function AddExpenseScreen({ navigation, route }) {
     }
   };
 
-    const Comp = Platform.OS === 'web' ? View : KeyboardAvoidingView;
   return (
-    <Comp
+    <KeyboardAvoidingView
       style={CommonStyles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <ScrollView
         style={CommonStyles.content}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentInsetAdjustmentBehavior="always"
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
         <View style={CommonStyles.header}>
           <Text style={CommonStyles.title}>Harcama Ekle</Text>
-          <Text style={CommonStyles.subtitle}>Duzensiz harcamalar icin hizli kayit veya fis okutma.</Text>
+          <Text style={CommonStyles.subtitle}>Düzensiz harcamalar için hızlı kayıt veya fiş okutma.</Text>
         </View>
 
         <View style={styles.receiptCard}>
           <View style={styles.receiptHeader}>
-            <Text style={styles.receiptTitle}>Fis veya fatura okut</Text>
+            <Text style={styles.receiptTitle}>Fiş veya fatura okut</Text>
             <Text style={styles.receiptSubtitle}>
-              Fotografi yukle, kalemleri tek tek duzenle ve mevcut harcama sistemine donustur.
+              Fotoğrafı yükle, kalemleri tek tek düzenle ve mevcut harcama sistemine dönüştür.
             </Text>
           </View>
           <View style={styles.receiptActions}>
-            <TouchableOpacity style={styles.receiptPrimaryButton} onPress={openCamera} disabled={scanningReceipt} activeOpacity={0.9}>
-              {scanningReceipt ? <ActivityIndicator color={theme.colors.text.onPrimary} /> : <Text style={styles.receiptPrimaryButtonText}>Kameradan cek</Text>}
+            <TouchableOpacity
+              style={styles.receiptPrimaryButton}
+              onPress={openCamera}
+              disabled={scanningReceipt}
+              activeOpacity={0.9}
+            >
+              {scanningReceipt ? (
+                <ActivityIndicator color={theme.colors.text.onPrimary} />
+              ) : (
+                <Text style={styles.receiptPrimaryButtonText}>Kameradan çek</Text>
+              )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.receiptSecondaryButton} onPress={openGallery} disabled={scanningReceipt} activeOpacity={0.9}>
-              <Text style={styles.receiptSecondaryButtonText}>Galeriden sec</Text>
+            <TouchableOpacity
+              style={styles.receiptSecondaryButton}
+              onPress={openGallery}
+              disabled={scanningReceipt}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.receiptSecondaryButtonText}>Galeriden seç</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
@@ -281,7 +308,7 @@ export default function AddExpenseScreen({ navigation, route }) {
             activeOpacity={0.85}
             onPress={() => navigation.navigate('FisGecmisi', { houseId: activeHouseId })}
           >
-            <Text style={styles.receiptGhostButtonText}>Kayitli fisleri gor</Text>
+            <Text style={styles.receiptGhostButtonText}>Kayıtlı fişleri gör</Text>
           </TouchableOpacity>
         </View>
 
@@ -296,7 +323,7 @@ export default function AddExpenseScreen({ navigation, route }) {
             onSubmitEditing={save}
             blurOnSubmit={false}
           />
-          <Text style={styles.hint}>Ornek: 1.000</Text>
+          <Text style={styles.hint}>Örnek: 1.000</Text>
         </View>
 
         <View style={styles.card}>
@@ -319,7 +346,7 @@ export default function AddExpenseScreen({ navigation, route }) {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.label}>Odeyen</Text>
+          <Text style={styles.label}>Ödeyen</Text>
           <View style={styles.chips}>
             {members.map((member) => {
               const active = String(member.id) === String(payerId);
@@ -338,10 +365,10 @@ export default function AddExpenseScreen({ navigation, route }) {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.label}>Aciklama (opsiyonel)</Text>
+          <Text style={styles.label}>Açıklama (opsiyonel)</Text>
           <TextInput
             style={[styles.input, styles.noteInput]}
-            placeholder="Kisa bir not..."
+            placeholder="Kısa bir not..."
             value={note}
             onChangeText={setNote}
             multiline
@@ -349,12 +376,12 @@ export default function AddExpenseScreen({ navigation, route }) {
         </View>
 
         <TouchableOpacity style={styles.toggle} onPress={() => setShowPersonal((prev) => !prev)} activeOpacity={0.8}>
-          <Text style={styles.toggleText}>{showPersonal ? 'Kisisel kalemleri gizle' : 'Kisisel kalem ekle'}</Text>
+          <Text style={styles.toggleText}>{showPersonal ? 'Kişisel kalemleri gizle' : 'Kişisel kalem ekle'}</Text>
         </TouchableOpacity>
 
         {showPersonal ? (
           <View style={styles.card}>
-            <Text style={styles.label}>Kisisel Kalemler</Text>
+            <Text style={styles.label}>Kişisel Kalemler</Text>
             {members.map((member) => (
               <View key={String(member.id)} style={styles.personalRow}>
                 <Text style={styles.personalName}>{member.fullName}</Text>
@@ -367,7 +394,7 @@ export default function AddExpenseScreen({ navigation, route }) {
                 />
               </View>
             ))}
-            <Text style={styles.info}>Kisisel kalemler toplamdan dusulur, kalan kisim ortak paylastirilir.</Text>
+            <Text style={styles.info}>Kişisel kalemler toplamdan düşülür, kalan kısım ortak paylaştırılır.</Text>
           </View>
         ) : null}
 
@@ -382,91 +409,129 @@ export default function AddExpenseScreen({ navigation, route }) {
 
         <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
       </ScrollView>
-    </Comp>
+    </KeyboardAvoidingView>
   );
 }
 
-const makeStyles = (theme) => StyleSheet.create({
-  card: { backgroundColor: theme.colors.background, padding: 16, borderRadius: 12, marginBottom: 14 },
-  receiptCard: {
-    backgroundColor: theme.colors.surface,
-    padding: 16,
-    borderRadius: 18,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-  },
-  receiptHeader: { marginBottom: 14 },
-  receiptTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text.primary },
-  receiptSubtitle: { fontSize: 13, color: theme.colors.text.secondary, marginTop: 4, lineHeight: 18 },
-  receiptActions: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  receiptPrimaryButton: {
-    flex: 1,
-    backgroundColor: theme.colors.primary[600],
-    borderRadius: 14,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-  },
-  receiptPrimaryButtonText: { color: theme.colors.text.onPrimary, fontWeight: '800' },
-  receiptSecondaryButton: {
-    flex: 1,
-    backgroundColor: theme.colors.primary[50],
-    borderWidth: 1,
-    borderColor: theme.colors.primary[200],
-    borderRadius: 14,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-  },
-  receiptSecondaryButtonText: { color: theme.colors.primary[700], fontWeight: '800' },
-  receiptGhostButton: {
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: theme.colors.background,
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-  },
-  receiptGhostButtonText: { color: theme.colors.text.primary, fontWeight: '700' },
-  label: { fontSize: 14, fontWeight: '600', color: theme.colors.text.primary, marginBottom: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[300],
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: theme.colors.background,
-    color: theme.colors.text.primary,
-  },
-  noteInput: { height: 80, textAlignVertical: 'top' },
-  hint: { marginTop: 6, color: theme.colors.text.secondary, fontSize: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.neutral[300], borderRadius: 20, backgroundColor: theme.colors.background },
-  chipActive: { borderColor: theme.colors.primary[600], backgroundColor: theme.colors.primary[50] },
-  chipText: { color: theme.colors.text.primary, fontWeight: '500' },
-  chipTextActive: { color: theme.colors.primary[700], fontWeight: '700' },
-  toggle: { backgroundColor: theme.colors.primary[100], borderColor: theme.colors.primary[300], borderWidth: 1, padding: 12, borderRadius: 10, marginBottom: 12, alignItems: 'center' },
-  toggleText: { color: theme.colors.primary[800], fontWeight: '600' },
-  personalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    backgroundColor: theme.colors.background,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 10,
-  },
-  personalName: { fontSize: 15, color: theme.colors.text.primary, flex: 1, marginRight: 10 },
-  personalInput: { width: 100, borderWidth: 1, borderColor: theme.colors.neutral[300], borderRadius: 8, padding: 8, textAlign: 'right', color: theme.colors.text.primary },
-  saveButton: { backgroundColor: theme.colors.success[600], padding: 16, borderRadius: 12, alignItems: 'center', marginBottom: 28 },
-  disabledButton: { opacity: 0.5 },
-  saveButtonText: { color: theme.colors.text.onPrimary, fontWeight: '700', fontSize: 16 },
-  info: { marginTop: 8, color: theme.colors.text.secondary, fontSize: 12 },
-});
+const makeStyles = (theme, isCompact) =>
+  StyleSheet.create({
+    scrollContent: { paddingBottom: 140 },
+    card: { backgroundColor: theme.colors.background, padding: 16, borderRadius: 12, marginBottom: 14 },
+    receiptCard: {
+      backgroundColor: theme.colors.surface,
+      padding: 16,
+      borderRadius: 18,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+    },
+    receiptHeader: { marginBottom: 14 },
+    receiptTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text.primary },
+    receiptSubtitle: { fontSize: 13, color: theme.colors.text.secondary, marginTop: 4, lineHeight: 18 },
+    receiptActions: { flexDirection: isCompact ? 'column' : 'row', gap: 10, marginBottom: 10 },
+    receiptPrimaryButton: {
+      flex: 1,
+      backgroundColor: theme.colors.primary[600],
+      borderRadius: 14,
+      minHeight: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 14,
+    },
+    receiptPrimaryButtonText: { color: theme.colors.text.onPrimary, fontWeight: '800' },
+    receiptSecondaryButton: {
+      flex: 1,
+      backgroundColor: theme.colors.primary[50],
+      borderWidth: 1,
+      borderColor: theme.colors.primary[200],
+      borderRadius: 14,
+      minHeight: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 14,
+    },
+    receiptSecondaryButtonText: { color: theme.colors.primary[700], fontWeight: '800' },
+    receiptGhostButton: {
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 12,
+      backgroundColor: theme.colors.background,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+    },
+    receiptGhostButtonText: { color: theme.colors.text.primary, fontWeight: '700' },
+    label: { fontSize: 14, fontWeight: '600', color: theme.colors.text.primary, marginBottom: 8 },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[300],
+      borderRadius: 10,
+      padding: 12,
+      fontSize: 16,
+      backgroundColor: theme.colors.background,
+      color: theme.colors.text.primary,
+    },
+    noteInput: { height: 80, textAlignVertical: 'top' },
+    hint: { marginTop: 6, color: theme.colors.text.secondary, fontSize: 12 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[300],
+      borderRadius: 20,
+      backgroundColor: theme.colors.background,
+    },
+    chipActive: { borderColor: theme.colors.primary[600], backgroundColor: theme.colors.primary[50] },
+    chipText: { color: theme.colors.text.primary, fontWeight: '500' },
+    chipTextActive: { color: theme.colors.primary[700], fontWeight: '700' },
+    toggle: {
+      backgroundColor: theme.colors.primary[100],
+      borderColor: theme.colors.primary[300],
+      borderWidth: 1,
+      padding: 12,
+      borderRadius: 10,
+      marginBottom: 12,
+      alignItems: 'center',
+    },
+    toggleText: { color: theme.colors.primary[800], fontWeight: '600' },
+    personalRow: {
+      flexDirection: isCompact ? 'column' : 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+      backgroundColor: theme.colors.background,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginBottom: 10,
+    },
+    personalName: {
+      fontSize: 15,
+      color: theme.colors.text.primary,
+      flex: isCompact ? 0 : 1,
+      marginRight: isCompact ? 0 : 10,
+      width: isCompact ? '100%' : undefined,
+      marginBottom: isCompact ? 8 : 0,
+    },
+    personalInput: {
+      width: isCompact ? '100%' : 100,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[300],
+      borderRadius: 8,
+      padding: 8,
+      textAlign: 'right',
+      color: theme.colors.text.primary,
+    },
+    saveButton: {
+      backgroundColor: theme.colors.success[600],
+      padding: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginBottom: 28,
+    },
+    disabledButton: { opacity: 0.5 },
+    saveButtonText: { color: theme.colors.text.onPrimary, fontWeight: '700', fontSize: 16 },
+    info: { marginTop: 8, color: theme.colors.text.secondary, fontSize: 12 },
+  });
