@@ -554,8 +554,8 @@ export default function BillsOverviewScreen({ navigation, route }) {
   }, [navigation, houseId, houseName, theme]);
 
   const ListEmpty = useCallback(() => (
-    <View style={[styles.empty, { paddingHorizontal: 16 }]}>
-<BrandMark variant="logo" size={52} subtle style={styles.emptyLogo} />
+    <View style={[styles.empty, styles.emptyState, { paddingHorizontal: 16 }]}>
+<BrandMark variant="logo" size={190} subtle style={styles.emptyWatermark} />
 <Text style={[styles.emptyText, { color: theme.colors.text.secondary }]}>
         {loading ? "Veriler yükleniyor..." : "Bu ay için görünür planlı gider bulunmuyor."}
       </Text>
@@ -649,7 +649,15 @@ const styles = StyleSheet.create({
     marginTop: 40,
     padding: 16,
   },
-  emptyLogo: { marginBottom: 10, borderWidth: 0, backgroundColor: 'transparent' },
+  emptyState: { position: 'relative', overflow: 'hidden', minHeight: 190 },
+  emptyWatermark: {
+    position: 'absolute',
+    opacity: 0.08,
+    right: -24,
+    bottom: -18,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+  },
   emptyText: { fontSize: 14, marginBottom: 8 },
   resetBtn: {
     paddingHorizontal: 12,

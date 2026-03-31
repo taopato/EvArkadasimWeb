@@ -187,8 +187,8 @@ export default function GroupListScreen({ navigation, route }) {
             ))}
           </View>
         ) : (
-          <View style={CommonStyles.emptyContainer}>
-            <BrandMark variant="logo" size={52} subtle style={styles.emptyLogo} />
+          <View style={[CommonStyles.emptyContainer, styles.emptyState]}>
+            <BrandMark variant="logo" size={180} subtle style={styles.emptyWatermark} />
             <Text style={CommonStyles.emptyText}>Henüz bir ev grubunuz bulunmamaktadır.</Text>
             <Text style={CommonStyles.emptyText}>İlk ev grubunuzu oluşturmak için yukarıdaki butona tıklayın.</Text>
           </View>
@@ -237,8 +237,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
-  emptyLogo: {
-    marginBottom: 12,
+  emptyState: { position: 'relative', overflow: 'hidden', minHeight: 190 },
+  emptyWatermark: {
+    position: 'absolute',
+    opacity: 0.08,
+    right: -18,
+    bottom: -16,
     borderWidth: 0,
     backgroundColor: 'transparent',
   },

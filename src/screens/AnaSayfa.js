@@ -248,6 +248,7 @@ const HomeScreen = ({ navigation }) => {
           amount={loadingWeekly ? 'Hesaplanıyor...' : formatCurrency(weeklyTotal)}
           primaryLabel={hasDefaultHouse ? '+ Gider Ekle' : 'Ev Seç'}
           onPrimaryAction={() => (hasDefaultHouse ? setBillModalVisible(true) : navigation.navigate('GrupListesi'))}
+          showBrand
         />
 
         <WeekStrip selectedKey={selectedDayKey || undefined} onSelect={(key) => setSelectedDayKey(key)} />

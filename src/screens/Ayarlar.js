@@ -23,8 +23,8 @@ export default function SettingsScreen({ navigation }) {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.heroCard}>
-        <View style={styles.heroBadge}>
-          <BrandMark size={22} subtle />
+        <View style={styles.heroWatermark}>
+          <BrandMark variant="logo" size={180} subtle />
         </View>
         <Text style={styles.eyebrow}>Hesap</Text>
         <Text style={styles.title}>Ayarlar</Text>
@@ -125,10 +125,11 @@ const makeStyles = (theme) =>
       position: 'relative',
       overflow: 'hidden',
     },
-    heroBadge: {
+    heroWatermark: {
       position: 'absolute',
-      top: 14,
-      right: 14,
+      right: -18,
+      bottom: -10,
+      opacity: 0.9,
     },
     eyebrow: {
       color: theme.colors.primary[700],

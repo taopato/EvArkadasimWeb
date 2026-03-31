@@ -619,8 +619,8 @@ const TumHarcamalarScreen = ({ navigation, route }) => {
         }
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <BrandMark variant="logo" size={56} subtle style={styles.emptyLogo} />
+          <View style={[styles.emptyContainer, styles.emptyState]}>
+            <BrandMark variant="logo" size={180} subtle style={styles.emptyWatermark} />
             <Text style={styles.emptyTitle}>Harcama bulunamadı</Text>
             <Text style={styles.emptySubtitle}>
               Filtreleri değiştirerek daha fazla sonuç görebilirsiniz
@@ -765,9 +765,13 @@ function makeStyles(theme, isCompact) {
       alignItems: 'center',
       paddingVertical: 48
     },
-    emptyLogo: {
+    emptyState: { position: 'relative', overflow: 'hidden', minHeight: 190 },
+    emptyWatermark: {
+      position: 'absolute',
+      opacity: 0.08,
+      right: -18,
+      bottom: -16,
       borderWidth: 0,
-      marginBottom: 18,
       backgroundColor: 'transparent',
     },
     emptyTitle: { fontSize: 18, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 8 },

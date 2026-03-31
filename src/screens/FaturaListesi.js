@@ -243,8 +243,8 @@ const BillListScreen = ({ route, navigation }) => {
             ))}
           </View>
         ) : (
-          <View style={CommonStyles.emptyContainer}>
-            <BrandMark variant="logo" size={52} subtle style={styles.emptyLogo} />
+          <View style={[CommonStyles.emptyContainer, styles.emptyState]}>
+            <BrandMark variant="logo" size={180} subtle style={styles.emptyWatermark} />
             <Text style={CommonStyles.emptyText}>
               {headerTitle} kategorisinde (bugün ve öncesi) kalem bulunmuyor.
             </Text>
@@ -268,7 +268,15 @@ function makeStyles(theme) {
     billAmountBox: { alignItems: 'flex-end' },
     billAmount: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text.primary },
     billCat: { fontSize: 12, marginTop: 2, color: theme.colors.text.secondary },
-    emptyLogo: { marginBottom: 12, borderWidth: 0, backgroundColor: 'transparent' },
+    emptyState: { position: 'relative', overflow: 'hidden', minHeight: 180 },
+    emptyWatermark: {
+      position: 'absolute',
+      opacity: 0.08,
+      right: -20,
+      bottom: -14,
+      borderWidth: 0,
+      backgroundColor: 'transparent',
+    },
   });
 }
 

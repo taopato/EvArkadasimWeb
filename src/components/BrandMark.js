@@ -15,17 +15,40 @@ export default function BrandMark({
   const { theme } = useTheme();
   const isLogo = variant === 'logo';
   const tint = subtle ? theme.colors.text.secondary : theme.colors.text.primary;
+  const logoFrameHeight = size * 0.46;
+  const logoImageOffsetY = -size * 0.27;
 
   return (
     <View style={[{ alignItems: 'center', justifyContent: 'center' }, style]}>
-      <Image
-        source={isLogo ? LOGO : ICON}
-        resizeMode="contain"
-        style={{
-          width: isLogo ? size * 2.8 : size,
-          height: isLogo ? size * 1.35 : size,
-        }}
-      />
+      {isLogo ? (
+        <View
+          style={{
+            width: size,
+            height: logoFrameHeight,
+            overflow: 'hidden',
+            alignItems: 'center',
+          }}
+        >
+          <Image
+            source={LOGO}
+            resizeMode="contain"
+            style={{
+              width: size,
+              height: size,
+              marginTop: logoImageOffsetY,
+            }}
+          />
+        </View>
+      ) : (
+        <Image
+          source={ICON}
+          resizeMode="contain"
+          style={{
+            width: size,
+            height: size,
+          }}
+        />
+      )}
       {label ? (
         <Text
           style={{

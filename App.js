@@ -58,7 +58,6 @@ import FisGecmisi from './src/screens/FisGecmisi';
 import DavetKabul from './src/screens/DavetKabul';
 import ProfilDuzenle from './src/screens/ProfilDuzenle';
 import EvNotlari from './src/screens/EvNotlari';
-import BrandMark from './src/components/BrandMark';
 
 
 const Stack = createNativeStackNavigator();
@@ -257,11 +256,6 @@ function ThemedNavigator() {
                     </Text>
                   </Pressable>
                 ),
-          headerRight: () => (
-            <View style={{ paddingLeft: 12 }}>
-              <BrandMark size={18} subtle />
-            </View>
-          ),
         })}
       >
         {!user ? (

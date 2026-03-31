@@ -340,8 +340,8 @@ const PlanliOdemelerScreen = ({ navigation, route }) => {
         }
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <BrandMark variant="logo" size={52} subtle style={styles.emptyLogo} />
+          <View style={[styles.emptyContainer, styles.emptyState]}>
+            <BrandMark variant="logo" size={180} subtle style={styles.emptyWatermark} />
             <Text style={styles.emptyTitle}>Planlı ödeme bulunamadı</Text>
             <Text style={styles.emptySubtitle}>
               Bu ay için ödenecek planlı gider bulunmuyor
@@ -429,10 +429,14 @@ const makeStyles = (theme) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 48
   },
-  emptyLogo: {
+  emptyState: { position: 'relative', overflow: 'hidden', minHeight: 190 },
+  emptyWatermark: {
+    position: 'absolute',
+    opacity: 0.08,
+    right: -18,
+    bottom: -16,
     borderWidth: 0,
     backgroundColor: 'transparent',
-    marginBottom: 16,
   },
   emptyTitle: { fontSize: 18, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: theme.colors.text.secondary, textAlign: 'center', lineHeight: 20 },

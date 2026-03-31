@@ -24,7 +24,7 @@ export const HeroHeader: React.FC<Props> = ({
   onPrimaryAction,
   primaryLabel = '+ Ekle',
   style,
-  showBrand = true,
+  showBrand = false,
 }) => {
   const { theme } = useTheme();
   return (
