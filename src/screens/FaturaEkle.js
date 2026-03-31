@@ -181,7 +181,7 @@ const AddBillScreen = ({ route, navigation }) => {
   const handleCreateIrregularExpense = async (moneyValue) => {
     try {
       const payerId = Number(responsibleUserId);
-      const creatorId = Number(user?.id);
+      const creatorId = Number(user?.id ?? user?.userId ?? payerId ?? 0);
       const house = Number(houseId);
 
       const safeTur = `${getCategoryDisplayName(billType)} ${month}`.slice(0, 30);
@@ -193,7 +193,7 @@ const AddBillScreen = ({ route, navigation }) => {
         tutar: moneyValue,
         houseId: house,
         odeyenUserId: payerId,
-        kaydedenUserId: creatorId,
+        kaydedenUserId: creatorId > 0 ? creatorId : payerId,
         postDate: `${billDate}T00:00:00`,
         dueDate: `${billDate}T00:00:00`,
         splitPolicy: 0,
@@ -336,3 +336,4 @@ function makeStyles(theme) {
 }
 
 export default AddBillScreen;
+

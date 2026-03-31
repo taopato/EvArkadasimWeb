@@ -135,6 +135,8 @@ export default function AddExpenseScreen({ navigation, route }) {
     }
 
     const sharedAmount = Number((amountNum - personalTotal).toFixed(2));
+    const creatorId = Number(user?.id ?? user?.userId ?? payerId ?? 0);
+    const safeCreatorId = creatorId > 0 ? creatorId : Number(payerId);
     const categoryId = toExpenseCategory(categoryKey);
     const expenseTitle = QUICK_EXPENSES.find((item) => item.key === categoryKey)?.label || 'Harcama';
 
@@ -146,7 +148,7 @@ export default function AddExpenseScreen({ navigation, route }) {
       tutar: amountNum,
       houseId: activeHouseId,
       odeyenUserId: Number(payerId),
-      kaydedenUserId: Number(user?.id),
+      kaydedenUserId: safeCreatorId,
       date: new Date().toISOString(),
       postDate: new Date().toISOString(),
       note,

@@ -124,6 +124,8 @@ export default function DuzenliGiderEkle({ navigation, route }) {
       const safeTur = getCategoryDisplayName(type);
       const categoryEnum = toExpenseCategory(type);
       const descriptionSafe = `${safeTur} | Başlangıç ${selectedDate.toLocaleDateString('tr-TR')}`;
+      const creatorId = Number(user?.id ?? user?.userId ?? payerUserId ?? 0);
+      const safeCreatorId = creatorId > 0 ? creatorId : Number(payerUserId);
 
       if (mode === 'installment') {
         const total = parseIntFromTR(totalAmount);
@@ -141,7 +143,7 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           startMonth: isoStart,
           houseId: activeHouseId,
           odeyenUserId: Number(payerUserId),
-          kaydedenUserId: Number(user?.id),
+          kaydedenUserId: safeCreatorId,
           cardholderUserId: Number(payerUserId),
           participants: participants.length ? participants.map((id) => Number(id)) : [],
           description: descriptionSafe,
@@ -163,7 +165,7 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           tutar: monthly,
           houseId: activeHouseId,
           odeyenUserId: Number(payerUserId),
-          kaydedenUserId: Number(user?.id),
+          kaydedenUserId: safeCreatorId,
           dueDay: dueDayNum,
           startMonth: isoStart,
           ortakHarcamaTutari: monthly,
@@ -187,7 +189,7 @@ export default function DuzenliGiderEkle({ navigation, route }) {
           tutar: once,
           houseId: activeHouseId,
           odeyenUserId: Number(payerUserId),
-          kaydedenUserId: Number(user?.id),
+          kaydedenUserId: safeCreatorId,
           date: selectedDate.toISOString(),
           ortakHarcamaTutari: once,
           sahsiHarcamalar: [],
@@ -483,3 +485,6 @@ const makeStyles = (theme) =>
     },
     primaryBtnText: { color: theme.colors.text.onPrimary, fontWeight: '800' },
   });
+
+
+
