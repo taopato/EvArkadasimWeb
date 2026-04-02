@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Dimensions
+  Dimensions,
+  useWindowDimensions
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { expensesApi, houseApi } from '../services/api';
@@ -19,6 +20,7 @@ import { useTheme } from '../shared/theme/ThemeProvider';
 import { useCommonStyles } from '../shared/ui/CommonStyles';
 import { normalizeExpense } from '../utils/expenseClassifier';
 import { getCategoryDisplayName, getCategoryIcon, getCategoryColor } from '../constants/ExpenseEnums';
+import { HeroHeader } from '../shared/ui/premium/HeroHeader';
 import {
   getUTCMonthWindow,
   formatCurrency,
@@ -41,7 +43,9 @@ const HarcamaOzetiScreen = ({ navigation, route }) => {
   const houseId = routeHouseId || user?.defaultHouseId;
   const CommonStyles = useCommonStyles();
   const { theme } = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { width } = useWindowDimensions();
+  const isCompact = width < 520;
+  const styles = useMemo(() => makeStyles(theme, isCompact), [theme, isCompact]);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -75,6 +79,15 @@ const HarcamaOzetiScreen = ({ navigation, route }) => {
     { key: 'Food', label: 'Yemek', icon: '🍽️' },
     { key: 'Other', label: 'Diğer', icon: '📄' }
   ];
+
+  const billCategoryKeys = categoryOptions
+    .map((option) => option.key)
+    .filter((key) => ['Rent', 'Internet', 'Electricity', 'Water', 'Gas'].includes(key));
+  const hasBillQuickFilter =
+    selectedCategories.length === billCategoryKeys.length &&
+    billCategoryKeys.every((key) => selectedCategories.includes(key));
+  const hasMineQuickFilter = selectedMembers.length === 1 && selectedMembers.includes(String(user?.id));
+  const hasIrregularQuickFilter = !includePlans;
 
   // Veri yükleme
   const loadData = async () => {
@@ -417,6 +430,37 @@ const HarcamaOzetiScreen = ({ navigation, route }) => {
             ))}
           </View>
 
+          {/* Üyeler */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterSectionTitle}>Ödeyen Kişi</Text>
+            <TouchableOpacity
+              style={[styles.filterOption, selectedMembers.length === 0 && styles.filterOptionActive]}
+              onPress={() => setSelectedMembers([])}
+            >
+              <Text style={[styles.filterOptionText, selectedMembers.length === 0 && styles.filterOptionTextActive]}>Hepsi</Text>
+            </TouchableOpacity>
+            {members.map((member) => {
+              const memberId = String(member.userId ?? member.UserId ?? member.id);
+              const memberName = member.fullName ?? member.FullName ?? member.name ?? `Kullanıcı ${memberId}`;
+              const active = selectedMembers.includes(memberId);
+              return (
+                <TouchableOpacity
+                  key={`member-${memberId}`}
+                  style={[styles.filterOption, active && styles.filterOptionActive]}
+                  onPress={() => {
+                    if (active) {
+                      setSelectedMembers((prev) => prev.filter((id) => id !== memberId));
+                    } else {
+                      setSelectedMembers((prev) => [...prev, memberId]);
+                    }
+                  }}
+                >
+                  <Text style={[styles.filterOptionText, active && styles.filterOptionTextActive]}>{memberName}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           {/* Plan Türü */}
           <View style={styles.filterSection}>
             <Text style={styles.filterSectionTitle}>Plan Türü</Text>
@@ -433,6 +477,20 @@ const HarcamaOzetiScreen = ({ navigation, route }) => {
               ]}>
                 Düzenli/Taksitli Planları Dahil Et
               </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.filterActions}>
+            <TouchableOpacity
+              style={styles.resetFiltersButton}
+              onPress={() => {
+                setSelectedPeriod('current');
+                setSelectedCategories([]);
+                setSelectedMembers([]);
+                setIncludePlans(true);
+              }}
+            >
+              <Text style={styles.resetFiltersText}>Filtreleri Sıfırla</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -453,15 +511,69 @@ const HarcamaOzetiScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Harcama Özeti</Text>
+      <HeroHeader
+        title="Harcama Özeti"
+        subtitle={`${selectedPeriod === 'current' ? 'Bu ay' : 'Seçili dönem'} • ${kpis.count} kalem`}
+        amount={formatCurrency(kpis.total)}
+        primaryLabel="Filtreler"
+        onPrimaryAction={() => setShowFilters(true)}
+      />
+
+      <View style={styles.actionRow}>
         <TouchableOpacity
-          style={styles.filterButton}
+          style={styles.primaryActionButton}
           onPress={() => setShowFilters(true)}
+          activeOpacity={0.9}
         >
-          <Text style={styles.filterButtonText}>Filtre</Text>
+          <Text style={styles.primaryActionText}>+ Filtreleri Aç</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.secondaryActionButton}
+          onPress={() => {
+            setSelectedPeriod('current');
+            setSelectedCategories([]);
+            setSelectedMembers([]);
+            setIncludePlans(true);
+          }}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.secondaryActionText}>Temizle</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.quickFiltersWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickFilters}>
+          <TouchableOpacity
+            style={[styles.quickChip, selectedPeriod === 'current' && styles.quickChipActive]}
+            onPress={() => setSelectedPeriod('current')}
+          >
+            <Text style={[styles.quickChipText, selectedPeriod === 'current' && styles.quickChipTextActive]}>Bu ay</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickChip, selectedPeriod === 'last3' && styles.quickChipActive]}
+            onPress={() => setSelectedPeriod(selectedPeriod === 'last3' ? 'current' : 'last3')}
+          >
+            <Text style={[styles.quickChipText, selectedPeriod === 'last3' && styles.quickChipTextActive]}>Son 3 ay</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickChip, hasIrregularQuickFilter && styles.quickChipActive]}
+            onPress={() => setIncludePlans(!hasIrregularQuickFilter)}
+          >
+            <Text style={[styles.quickChipText, hasIrregularQuickFilter && styles.quickChipTextActive]}>Düzensiz</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickChip, hasBillQuickFilter && styles.quickChipActive]}
+            onPress={() => setSelectedCategories(hasBillQuickFilter ? [] : billCategoryKeys)}
+          >
+            <Text style={[styles.quickChipText, hasBillQuickFilter && styles.quickChipTextActive]}>Faturalar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickChip, hasMineQuickFilter && styles.quickChipActive]}
+            onPress={() => setSelectedMembers(hasMineQuickFilter ? [] : [String(user?.id)])}
+          >
+            <Text style={[styles.quickChipText, hasMineQuickFilter && styles.quickChipTextActive]}>Ben ödedim</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -483,19 +595,80 @@ const HarcamaOzetiScreen = ({ navigation, route }) => {
 
 export default HarcamaOzetiScreen;
 
-function makeStyles(theme) {
+function makeStyles(theme, isCompact) {
   const { width } = Dimensions.get('window');
   return StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: theme.colors.surface },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { marginTop: 16, fontSize: 16 },
-    header: {
-      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16,
-      backgroundColor: theme.colors.background, borderBottomWidth: 1, borderBottomColor: theme.colors.neutral[200]
+    actionRow: {
+      flexDirection: isCompact ? 'column' : 'row',
+      gap: 10,
+      paddingHorizontal: 16,
+      paddingTop: 14,
+      paddingBottom: 10,
+      backgroundColor: theme.colors.surface,
     },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: theme.colors.text.primary },
-    filterButton: { backgroundColor: theme.colors.primary[500], paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
-    filterButtonText: { color: theme.colors.text.onPrimary, fontWeight: '600' },
+    primaryActionButton: {
+      flex: 1,
+      backgroundColor: theme.colors.primary[600],
+      borderRadius: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryActionText: {
+      color: theme.colors.text.onPrimary,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    secondaryActionButton: {
+      minWidth: isCompact ? 0 : 108,
+      paddingHorizontal: 16,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[300],
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    secondaryActionText: {
+      color: theme.colors.text.primary,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    quickFiltersWrap: {
+      backgroundColor: theme.colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.neutral[200],
+      paddingTop: 6,
+    },
+    quickFilters: {
+      paddingHorizontal: 16,
+      paddingBottom: 10,
+      gap: 8,
+    },
+    quickChip: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      backgroundColor: theme.colors.background,
+      borderWidth: 1,
+      borderColor: theme.colors.neutral[200],
+      alignSelf: 'flex-start',
+    },
+    quickChipActive: {
+      backgroundColor: theme.colors.primary[600],
+      borderColor: theme.colors.primary[600],
+    },
+    quickChipText: {
+      color: theme.colors.text.primary,
+      fontWeight: '700',
+    },
+    quickChipTextActive: {
+      color: theme.colors.text.onPrimary,
+    },
     content: { flex: 1 },
     kpiContainer: { flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 12 },
     kpiCard: {
@@ -532,5 +705,16 @@ function makeStyles(theme) {
     filterOptionActive: { backgroundColor: theme.colors.primary[100], borderColor: theme.colors.primary[500] },
     filterOptionText: { fontSize: 14, color: theme.colors.text.primary },
     filterOptionTextActive: { color: theme.colors.primary[700], fontWeight: '600' },
+    filterActions: { marginTop: 8, marginBottom: 28 },
+    resetFiltersButton: {
+      backgroundColor: theme.colors.neutral[100],
+      borderColor: theme.colors.neutral[300],
+      borderWidth: 1,
+      borderRadius: 12,
+      minHeight: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    resetFiltersText: { color: theme.colors.text.primary, fontWeight: '700' },
   });
 }
