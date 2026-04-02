@@ -18,15 +18,17 @@ const fmt = (n) => {
 const TwoPersonDebtDetailScreen = ({ route, navigation }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const { houseId, userAId, userBId } = route.params || {}; // userAId ↔ userBId arası borç durumu
+  const { houseId, userAId, userBId, currentUserId, selectedUserId } = route.params || {}; // userAId ↔ userBId arası borç durumu
+  const resolvedUserAId = Number(userAId ?? currentUserId);
+  const resolvedUserBId = Number(userBId ?? selectedUserId);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState(null);
 
   const load = async () => {
-    if (!houseId || !userAId || !userBId) return;
+    if (!houseId || !resolvedUserAId || !resolvedUserBId) return;
     setLoading(true);
     try {
-      const res = await houseApi.getUserDebtBetween(Number(houseId), Number(userAId), Number(userBId));
+      const res = await houseApi.getUserDebtBetween(Number(houseId), resolvedUserAId, resolvedUserBId);
       const data = res?.data?.data ?? res?.data ?? null;
       setSummary(data);
     } catch (e) {
@@ -36,7 +38,7 @@ const TwoPersonDebtDetailScreen = ({ route, navigation }) => {
     }
   };
 
-  useEffect(() => { load(); }, [houseId, userAId, userBId]);
+  useEffect(() => { load(); }, [houseId, resolvedUserAId, resolvedUserBId]);
 
   const handlePay = async () => {
     if (!summary) return;
@@ -139,3 +141,4 @@ const styles = StyleSheet.create({
 });
 
 export default TwoPersonDebtDetailScreen;
+

@@ -40,6 +40,10 @@ const QUICK_EXPENSES = [
   { key: 'Other', label: 'Diğer' },
 ];
 
+
+const MIN_RECEIPT_WIDTH = 1200;
+const MIN_RECEIPT_HEIGHT = 1200;
+
 export default function AddExpenseScreen({ navigation, route }) {
   const { user } = useAuth();
   const activeHouseId = Number(route?.params?.houseId || user?.defaultHouseId || 0);
@@ -221,6 +225,22 @@ export default function AddExpenseScreen({ navigation, route }) {
     }
   };
 
+  const isReceiptImageTooLowQuality = (asset) => {
+    const width = Number(asset?.width || 0);
+    const height = Number(asset?.height || 0);
+
+    if (!width || !height) return false;
+    return width < MIN_RECEIPT_WIDTH || height < MIN_RECEIPT_HEIGHT;
+  };
+
+  const warnLowQualityAndAbort = () => {
+    Alert.alert(
+      'Fotograf net degil',
+      'Fis metinleri yeterince net gorunmuyor olabilir. Lutfen daha net ve yakin bir fotograf cekin veya daha yuksek kaliteli bir gorsel secin.'
+    );
+    showToast('Lutfen daha net bir fis fotografi yukleyin.', 'error');
+  };
+
   const openGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -230,12 +250,17 @@ export default function AddExpenseScreen({ navigation, route }) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: Platform.OS !== 'web',
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 1,
     });
 
     if (!result.canceled) {
-      await uploadReceipt(result.assets?.[0]);
+      const asset = result.assets?.[0];
+      if (isReceiptImageTooLowQuality(asset)) {
+        warnLowQualityAndAbort();
+        return;
+      }
+      await uploadReceipt(asset);
     }
   };
 
@@ -248,12 +273,17 @@ export default function AddExpenseScreen({ navigation, route }) {
 
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: Platform.OS !== 'web',
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 1,
     });
 
     if (!result.canceled) {
-      await uploadReceipt(result.assets?.[0]);
+      const asset = result.assets?.[0];
+      if (isReceiptImageTooLowQuality(asset)) {
+        warnLowQualityAndAbort();
+        return;
+      }
+      await uploadReceipt(asset);
     }
   };
 
@@ -537,3 +567,5 @@ const makeStyles = (theme, isCompact) =>
     saveButtonText: { color: theme.colors.text.onPrimary, fontWeight: '700', fontSize: 16 },
     info: { marginTop: 8, color: theme.colors.text.secondary, fontSize: 12 },
   });
+
+

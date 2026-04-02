@@ -208,6 +208,7 @@ export const houseApi = {
   getById: (id) => api.get(`/Houses/${id}`),
   addMember: (houseId, userId) => api.post(`/Houses/${houseId}/members`, { houseId, userId }),
   removeMember: (houseId, userId) => api.delete(`/Houses/${houseId}/members/${userId}`),
+  deleteHouse: (houseId) => api.delete(`/Houses/${houseId}`),
   sendInvitation: (houseId, email) => api.post(`/Houses/${houseId}/invitations`, { email }),
   acceptInvitation: (invitationCode) =>
     api.post('/Houses/AcceptInvitation', { invitationCode }),

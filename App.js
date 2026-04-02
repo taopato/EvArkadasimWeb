@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useTheme } from './src/shared/theme/ThemeProvider';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { LanguageProvider } from './src/context/LanguageContext';
 
 import GirisYap from './src/screens/GirisYap';
 import KayitOl from './src/screens/KayitOl';
@@ -29,7 +30,6 @@ import AlacaklarListesi from './src/screens/AlacaklarListesi';
 import Alacaklarim from './src/screens/Alacaklarim';
 import HarcamaDetayi from './src/screens/HarcamaDetayi';
 import DavetEt from './src/screens/DavetEt';
-import DavetiyeKabul from './src/screens/DavetiyeKabul';
 import OdemeOnayi from './src/screens/OdemeOnayi';
 import OdemeEkle from './src/screens/OdemeEkle';
 import EvHarcamaOzeti from './src/screens/EvHarcamaOzeti';
@@ -49,6 +49,7 @@ import AlacakBorcIcmi from './src/screens/AlacakBorcIcmi';
 import DuzenliGiderEkle from './src/screens/DuzenliGiderEkle';
 import Ayarlar from './src/screens/Ayarlar';
 import TemaAyarlari from './src/screens/TemaAyarlari';
+import DilAyarlari from './src/screens/DilAyarlari';
 import DefterDetayi from './src/screens/DefterDetayi';
 import PlanliOdemeler from './src/screens/PlanliOdemeler';
 import HarcamaListesi from './src/screens/HarcamaListesi';
@@ -283,6 +284,7 @@ function ThemedNavigator() {
             <Stack.Screen name="Ayarlar" component={Ayarlar} options={{ title: 'Ayarlar' }} />
             <Stack.Screen name="ProfilDuzenle" component={ProfilDuzenle} options={{ title: 'Profili Düzenle' }} />
             <Stack.Screen name="ThemeSettingsScreen" component={TemaAyarlari} options={{ title: 'Tema Ayarları' }} />
+            <Stack.Screen name="DilAyarlari" component={DilAyarlari} options={{ title: 'Dil Ayarları' }} />
             <Stack.Screen name="AddHousemate" component={EvArkadasiEkle} options={{ title: 'Ev Arkadaşı Ekle' }} />
             <Stack.Screen name="HarcamaListesi" component={TumHarcamalar} options={{ title: 'Harcamalar' }} />
             <Stack.Screen name="ExpenseListScreen" component={TumHarcamalar} options={{ title: 'Harcamalar' }} />
@@ -301,7 +303,7 @@ function ThemedNavigator() {
             <Stack.Screen name="YeniEvGrubu" component={YeniEvGrubu} options={{ title: 'Yeni Grup Oluştur' }} />
             <Stack.Screen name="EvGrubuArkadaslarim" component={EvGrubuArkadaslarim} options={{ title: 'Ev Arkadaşlarım' }} />
             <Stack.Screen name="DavetEt" component={DavetEt} options={{ title: 'Arkadaş Davet Et' }} />
-            <Stack.Screen name="DavetiyeKabul" component={DavetiyeKabul} options={{ title: 'Davet Kabul Et' }} />
+            <Stack.Screen name="DavetiyeKabul" component={DavetKabul} options={{ title: 'Davet Kabul Et', headerShown: false }} />
             <Stack.Screen name="OdemeOnayi" component={OdemeOnayi} options={{ title: 'Bekleyen Ödemeler' }} />
             <Stack.Screen name="Faturalar" component={Faturalar} options={{ title: 'Faturalar' }} />
             <Stack.Screen name="FaturaEkle" component={FaturaEkle} options={{ title: 'Yeni Fatura' }} />
@@ -342,12 +344,14 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <ThemedStatusBar />
-            <ThemedNavigator />
-          </AuthProvider>
-        </ThemeProvider>
+        <LanguageProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <ThemedStatusBar />
+              <ThemedNavigator />
+            </AuthProvider>
+          </ThemeProvider>
+        </LanguageProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

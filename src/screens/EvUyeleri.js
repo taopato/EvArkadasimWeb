@@ -27,7 +27,7 @@ const MenuBtn = ({ icon, title, sub, onPress, color }) => (
 
 export default function HouseMembersScreen({ route, navigation }) {
   const { houseId, houseName } = route.params || {};
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { listRef, handleScroll } = useScrollRestore(`HouseMembersScreen:${houseId ?? 'all'}`);
   const { theme } = useTheme();
   const CommonStyles = useCommonStyles();
@@ -173,9 +173,17 @@ export default function HouseMembersScreen({ route, navigation }) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await houseApi.removeMember(houseId, memberId, user?.id);
+            await houseApi.removeMember(houseId, memberId);
             showToast(isRemovingSelf ? 'Evden ayrildiniz' : 'Uye cikarildi', 'success');
             if (isRemovingSelf) {
+              // Varsayılan ev bu ev ise temizle
+              if (Number(user?.defaultHouseId) === Number(houseId)) {
+                await updateUser((prev) => ({
+                  ...(prev || {}),
+                  defaultHouseId: null,
+                  defaultHouseName: null,
+                }));
+              }
               navigation.navigate('Home');
             } else {
               fetchMembers();
@@ -288,7 +296,7 @@ export default function HouseMembersScreen({ route, navigation }) {
                   <Text style={[styles.memberBalance, { color: balanceColor }]}>
                     {item.balance !== 0 ? `${item.balance.toFixed(0)} TL` : 'Notr'}
                   </Text>
-                  {user?.id === creatorUserId && !isCurrentUser ? (
+                  {Number(user?.id) === Number(creatorUserId) && !isCurrentUser ? (
                     <TouchableOpacity onPress={() => handleRemoveMember(item.id, item.fullName)} style={styles.removeBtn}>
                       <Text style={styles.removeBtnText}>Cikar</Text>
                     </TouchableOpacity>

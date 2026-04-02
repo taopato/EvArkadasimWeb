@@ -17,7 +17,7 @@ import {
 } from '../utils/expenseHelpers';
 
 const HomeScreen = ({ navigation }) => {
-  const { user, logout, setDefaultHouseId } = useAuth();
+  const { user, logout, setDefaultHouseId, updateUser } = useAuth();
   const { theme } = useTheme();
   const [billModalVisible, setBillModalVisible] = useState(false);
   const [weeklyTotal, setWeeklyTotal] = useState(0);
@@ -40,15 +40,34 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     const ensureDefaultHouse = async () => {
-      if (!user?.id || user?.defaultHouseId) {
+      if (!user?.id) {
         return;
       }
 
       try {
         const response = await houseApi.getUserHouses(Number(user.id));
         const houses = Array.isArray(response?.data) ? response.data : [];
-        if (houses.length > 0) {
+        if (houses.length === 0) {
+          if (user?.defaultHouseId) {
+            await updateUser((prev) => ({
+              ...(prev || {}),
+              defaultHouseId: null,
+              defaultHouseName: null,
+            }));
+          }
+          return;
+        }
+
+        const currentDefaultId = Number(user?.defaultHouseId || 0);
+        const matchedDefault = houses.find((house) => Number(house.id) === currentDefaultId);
+
+        if (!currentDefaultId || !matchedDefault) {
           await setDefaultHouseId(houses[0].id, houses[0].name);
+          return;
+        }
+
+        if (matchedDefault.name && matchedDefault.name !== user?.defaultHouseName) {
+          await setDefaultHouseId(matchedDefault.id, matchedDefault.name);
         }
       } catch {
         // Ana sayfayi bloklamamak icin burada sessiz kaliyoruz.
@@ -56,7 +75,7 @@ const HomeScreen = ({ navigation }) => {
     };
 
     ensureDefaultHouse();
-  }, [user?.id, user?.defaultHouseId, setDefaultHouseId]);
+  }, [user?.id, user?.defaultHouseId, user?.defaultHouseName, setDefaultHouseId, updateUser]);
 
   const pastelKeys = ['blue', 'green', 'purple', 'orange', 'pink'];
   const formatCurrency = (amount) =>

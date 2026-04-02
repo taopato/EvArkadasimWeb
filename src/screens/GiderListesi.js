@@ -130,7 +130,7 @@ const ChargesListScreen = ({ navigation, route }) => {
             <TouchableOpacity 
               key={charge.expenseId || index} 
               style={CommonStyles.card}
-              onPress={() => {}}
+              onPress={() => navigation.navigate('HarcamaDetayi', { expenseId: charge.expenseId, houseId, houseName })}
             >
               <View style={styles.chargeHeader}>
                 <View style={styles.chargeTitleRow}>
@@ -164,7 +164,7 @@ const ChargesListScreen = ({ navigation, route }) => {
 
         <TouchableOpacity 
           style={CommonStyles.menuButton} 
-          onPress={() => navigation.navigate('NewRecurringCharge', { houseId, houseName })}
+          onPress={() => navigation.navigate('DuzenliGiderEkle', { houseId, houseName })}
           activeOpacity={0.8}
         >
           <View style={[CommonStyles.buttonContent, { backgroundColor: ColorThemes.primary.background }]}>
@@ -176,7 +176,7 @@ const ChargesListScreen = ({ navigation, route }) => {
 
         <TouchableOpacity 
           style={CommonStyles.menuButton} 
-          onPress={() => navigation.navigate('PaymentApproval', { houseId, houseName })}
+          onPress={() => navigation.navigate('OdemeOnayi', { houseId, houseName })}
           activeOpacity={0.8}
         >
           <View style={[CommonStyles.buttonContent, { backgroundColor: ColorThemes.warning.background }]}>

@@ -128,11 +128,11 @@ const MyReceivablesScreen = ({ navigation, route }) => {
                   style={CommonStyles.listItem}
                   activeOpacity={0.8}
                   onPress={() =>
-                    navigation.navigate('TwoPersonDebtDetail', {
+                    navigation.navigate('KisiDetayi', {
                       houseId,
-                      currentUserId: Number(user.id),
-                      selectedUserId: item.counterpartyUserId,
-                      selectedUserName: item.counterpartyName,
+                      userAId: Number(user.id),
+                      userBId: item.counterpartyUserId,
+                      houseName,
                     })
                   }
                 >

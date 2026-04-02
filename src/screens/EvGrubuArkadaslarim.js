@@ -105,12 +105,11 @@ const EvGrubuArkadaslarimScreen = ({ route, navigation }) => {
     if (user && user.id === member.id) {
       return;
     }
-    navigation.navigate('TwoPersonDebtDetail', {
+    navigation.navigate('KisiDetayi', {
       houseId,
       houseName,
-      currentUserId: user.id,
-      selectedUserId: member.id,
-      selectedUserName: member.fullName,
+      userAId: Number(user.id),
+      userBId: Number(member.id),
     });
   };
 

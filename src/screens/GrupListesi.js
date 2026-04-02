@@ -3,6 +3,7 @@ import { View, FlatList, Text, TouchableOpacity, ActivityIndicator, Alert, Style
 import useScrollRestore from '../hooks/useScrollRestore';
 import { useAuth } from '../context/AuthContext';
 import { houseApi } from '../services/api';
+
 import { useCommonStyles, makeColorThemes } from '../shared/ui/CommonStyles';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import BrandMark from '../components/BrandMark';
@@ -10,7 +11,7 @@ import BrandMark from '../components/BrandMark';
 export default function GroupListScreen({ navigation, route }) {
   const [houses, setHouses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { user, setDefaultHouseId } = useAuth();
+  const { user, setDefaultHouseId, updateUser } = useAuth();
   const { listRef, handleScroll } = useScrollRestore('GroupListScreen');
   const CommonStyles = useCommonStyles();
   const { theme } = useTheme();
@@ -117,6 +118,94 @@ export default function GroupListScreen({ navigation, route }) {
     });
   };
 
+  const ensureValidDefaultHouseAfterRemoval = async (removedHouseId, nextHouses) => {
+    const removedId = Number(removedHouseId);
+    const defaultId = Number(user?.defaultHouseId || 0);
+    if (!defaultId || defaultId !== removedId) return;
+
+    const remaining = Array.isArray(nextHouses) ? nextHouses : [];
+    if (remaining.length > 0) {
+      await setDefaultHouseId(remaining[0].id, remaining[0].name);
+      return;
+    }
+
+    await updateUser((prev) => ({
+      ...(prev || {}),
+      defaultHouseId: null,
+      defaultHouseName: null,
+    }));
+  };
+
+  const handleDeleteHouse = (house) => {
+    const houseId = Number(house?.id);
+    if (!houseId) return;
+
+    Alert.alert(
+      'Evi Sil',
+      `"${house?.name || 'Bu ev'}" grubu kalici olarak silinecek. Bu islem geri alinamaz.`,
+      [
+        { text: 'Iptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await houseApi.deleteHouse(houseId);
+              const nextHouses = houses.filter((item) => Number(item.id) !== houseId);
+              setHouses(nextHouses);
+              await ensureValidDefaultHouseAfterRemoval(houseId, nextHouses);
+              Alert.alert('Basarili', 'Ev grubu silindi.');
+            } catch (error) {
+              const message = error?.response?.data?.message || 'Ev grubu silinemedi.';
+              Alert.alert('Hata', message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleLeaveHouse = (house) => {
+    const houseId = Number(house?.id);
+    const me = Number(user?.id || 0);
+    if (!houseId || !me) return;
+
+    Alert.alert(
+      'Evden Ayril',
+      `"${house?.name || 'Bu ev'}" grubundan ayrilmak istiyor musun?`,
+      [
+        { text: 'Iptal', style: 'cancel' },
+        {
+          text: 'Ayril',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await houseApi.removeMember(houseId, me);
+              const nextHouses = houses.filter((item) => Number(item.id) !== houseId);
+              setHouses(nextHouses);
+              await ensureValidDefaultHouseAfterRemoval(houseId, nextHouses);
+              Alert.alert('Basarili', 'Evden ayrildiniz.');
+            } catch (error) {
+              const message = error?.response?.data?.message || 'Evden ayrilma islemi basarisiz.';
+              Alert.alert('Hata', message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleHouseLongPress = (house) => {
+    const isCreator = Number(house?.creatorUserId) === Number(user?.id);
+
+    if (isCreator) {
+      handleDeleteHouse(house);
+      return;
+    }
+
+    handleLeaveHouse(house);
+  };
+
   const safeFormatDate = (v) => {
     const raw = v || v === 0 ? v : (typeof v === 'string' ? v : undefined);
     const d = raw ? new Date(raw) : null;
@@ -128,6 +217,8 @@ export default function GroupListScreen({ navigation, route }) {
     <TouchableOpacity
       style={[CommonStyles.menuButton]}
       onPress={() => handleHousePress(item)}
+      onLongPress={() => handleHouseLongPress(item)}
+      delayLongPress={380}
       activeOpacity={0.8}
     >
       <View style={[CommonStyles.buttonContent, { backgroundColor: Number(user?.defaultHouseId) === Number(item.id) ? ColorThemes.success.background : ColorThemes.primary.background }]}>
@@ -141,6 +232,11 @@ export default function GroupListScreen({ navigation, route }) {
             <Text style={styles.activeBadgeText}>Aktif ev</Text>
           </View>
         )}
+        <Text style={styles.longPressHint}>
+          {Number(item?.creatorUserId) === Number(user?.id)
+            ? 'Uzun bas: evi sil'
+            : 'Uzun bas: evden ayril'}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -236,6 +332,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '800',
+  },
+  longPressHint: {
+    marginTop: 8,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    fontWeight: '700',
   },
   emptyState: { position: 'relative', overflow: 'hidden', minHeight: 190 },
   emptyWatermark: {

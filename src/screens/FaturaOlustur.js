@@ -172,6 +172,9 @@ const handleCreateBill = async () => {
         postDate: `${billDate}T00:00:00`,
         dueDate: `${billDate}T00:00:00`,
         splitPolicy: 0, // eşit bölüş
+        note: note || '',
+        aciklama: note || '',
+        Aciklama: note || '',
       };
       await expensesApi.update(billId, updateData);
       showToast('Fatura güncellendi', 'success');
@@ -206,14 +209,17 @@ const handleCreateIrregularExpense = async (moneyValue) => {
       postDate: `${billDate}T00:00:00`,
       dueDate: `${billDate}T00:00:00`,
       splitPolicy: 0,
-      personalItems: []
+      personalItems: [],
+      note: note || '',
+      aciklama: note || '',
+      Aciklama: note || '',
     };
 
     await expensesApi.createIrregular(payload);
 
     showToast('Kayıt oluşturuldu', 'success');
     if (navigation?.canGoBack?.()) navigation.goBack();
-    else navigation.navigate('Expenses', { houseId });
+    else navigation.navigate('TumHarcamalar', { houseId, houseName });
   } catch (e) {
     const serverText = String(e?.response?.data ?? e?.message ?? '');
     showToast(serverText || 'Oluşturma hatası', 'error');
@@ -235,8 +241,6 @@ const handleCreateIrregularExpense = async (moneyValue) => {
           <View style={styles.header}>
             <Text style={styles.title}>{isEditing ? 'Düzenle' : 'Yeni'} Fatura Oluştur</Text>
             <Text style={styles.subtitle}>{houseName} - {getCategoryDisplayName(billType)}</Text>
-            <Text style={[styles.subtitle, { fontWeight: '800' }]}>Fatura Ekle</Text>
-            <Text style={[styles.subtitle, { fontWeight: '800', opacity: 0.9 }]}>Tarık 1</Text>
           </View>
 
           <ScrollView 
@@ -309,9 +313,9 @@ const handleCreateIrregularExpense = async (moneyValue) => {
               value={note}
               onChangeText={setNote}
               multiline
-              placeholder="İstersen not gir (şimdilik kaydedilmiyor)"
+              placeholder="İstersen not gir"
             />
-            <Text style={styles.hint}>Not alanı DB kısıtı nedeniyle şu an kaydedilmiyor.</Text>
+            <Text style={styles.hint}>Not, harcama açıklaması olarak kaydedilir.</Text>
           </View>
 
           <View style={styles.inputGroup}>

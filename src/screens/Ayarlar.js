@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'rea
 import Constants from 'expo-constants';
 import { useTheme } from '../shared/theme/ThemeProvider';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { GOOGLE_CLIENT_IDS, BASE_URL } from '../shared/config/env';
 import BrandMark from '../components/BrandMark';
 
 export default function SettingsScreen({ navigation }) {
   const { user, logout } = useAuth();
+  const { language } = useLanguage();
   const { theme } = useTheme();
   const styles = makeStyles(theme);
   const appVersion = Constants?.expoConfig?.version || '1.0.0';
@@ -48,6 +50,10 @@ export default function SettingsScreen({ navigation }) {
             <Text style={styles.infoValue}>v{appVersion}</Text>
           </View>
           <View style={styles.infoBox}>
+            <Text style={styles.infoLabel}>Dil</Text>
+            <Text style={styles.infoValue}>{language === 'en' ? 'English' : 'Türkçe'}</Text>
+          </View>
+          <View style={styles.infoBox}>
             <Text style={styles.infoLabel}>API</Text>
             <Text style={styles.infoValue} numberOfLines={1}>
               {BASE_URL}
@@ -67,6 +73,14 @@ export default function SettingsScreen({ navigation }) {
           <View>
             <Text style={styles.rowTitle}>Tema</Text>
             <Text style={styles.rowDesc}>Açık, koyu veya AMOLED görünüm arasında geçiş yap</Text>
+          </View>
+          <Text style={styles.rowArrow}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.rowBtn} activeOpacity={0.88} onPress={() => navigation.navigate('DilAyarlari')}>
+          <View>
+            <Text style={styles.rowTitle}>Dil</Text>
+            <Text style={styles.rowDesc}>Uygulama dilini Türkçe veya İngilizce olarak ayarla</Text>
           </View>
           <Text style={styles.rowArrow}>›</Text>
         </TouchableOpacity>
