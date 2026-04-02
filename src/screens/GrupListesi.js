@@ -156,6 +156,18 @@ export default function GroupListScreen({ navigation, route }) {
               await ensureValidDefaultHouseAfterRemoval(houseId, nextHouses);
               Alert.alert('Basarili', 'Ev grubu silindi.');
             } catch (error) {
+              const status = Number(error?.response?.status || 0);
+              if (status === 409) {
+                try {
+                  await houseApi.removeMember(houseId, Number(user?.id));
+                  const nextHouses = houses.filter((item) => Number(item.id) !== houseId);
+                  setHouses(nextHouses);
+                  await ensureValidDefaultHouseAfterRemoval(houseId, nextHouses);
+                  Alert.alert('Bilgi', 'Evde bagli kayitlar oldugu icin fiziksel silme yerine gruptan ayrildiniz.');
+                  return;
+                } catch {}
+              }
+
               const message = error?.response?.data?.message || 'Ev grubu silinemedi.';
               Alert.alert('Hata', message);
             }
