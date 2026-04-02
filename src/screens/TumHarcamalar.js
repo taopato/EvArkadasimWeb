@@ -28,7 +28,6 @@ import { shadow } from '../shared/ui/shadow';
 import BrandMark from '../components/BrandMark';
 import {
   compareByRecentDate,
-  getUTCMonthWindow,
   formatCurrency,
   formatDate,
   getExpenseDisplayTitle,
@@ -36,13 +35,9 @@ import {
   getItemNote,
   getPlanType,
   getSortDate,
-  isChildExpense,
-  isParentExpense,
   deduplicateMonthlyPlans,
   sortByDateDesc,
-  getCategoryDisplayName,
   getCategoryIcon,
-  getCategoryColor,
   calculateTotals
 } from '../utils/expenseHelpers';
 
@@ -63,7 +58,7 @@ const TumHarcamalarScreen = ({ navigation, route }) => {
   const [membersMap, setMembersMap] = useState({});
 
   // Filtreler
-  const [selectedPeriod, setSelectedPeriod] = useState('current');
+  const [selectedPeriod, setSelectedPeriod] = useState('all');
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [selectedPlanTypes, setSelectedPlanTypes] = useState(['all']);
@@ -75,7 +70,7 @@ const TumHarcamalarScreen = ({ navigation, route }) => {
 
   // Dönem seçenekleri
   const periodOptions = [
-    { key: 'current', label: 'Bu Ay' },
+    { key: 'current', label: 'Bu Ay (30 Gun)' },
     { key: 'last3', label: 'Son 3 Ay' },
     { key: 'last6', label: 'Son 6 Ay' },
     { key: 'year', label: 'Bu Yıl' },
@@ -193,8 +188,12 @@ const TumHarcamalarScreen = ({ navigation, route }) => {
     const now = new Date();
     
     switch (selectedPeriod) {
-      case 'current':
-        return getUTCMonthWindow(now);
+      case 'current': {
+        const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const start = new Date(end);
+        start.setDate(start.getDate() - 30);
+        return { monthStart: start, monthEnd: end };
+      }
       case 'last3':
         const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
         return { monthStart: threeMonthsAgo, monthEnd: now };

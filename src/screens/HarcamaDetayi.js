@@ -139,6 +139,73 @@ export default function HarcamaDetayi({ navigation, route }) {
     }, {})
   );
 
+  const ledgerByPair = useMemo(
+    () =>
+      Object.values(
+        ledgerLines.reduce((acc, line) => {
+          const fromUserId = Number(line?.fromUserId ?? line?.FromUserId);
+          const toUserId = Number(line?.toUserId ?? line?.ToUserId);
+          const amountValue = Number(line?.amount ?? line?.Amount ?? 0);
+          if (!Number.isFinite(fromUserId) || !Number.isFinite(toUserId) || !(amountValue > 0)) return acc;
+
+          const key = `${fromUserId}-${toUserId}`;
+          acc[key] = acc[key] || { fromUserId, toUserId, amount: 0 };
+          acc[key].amount += amountValue;
+          return acc;
+        }, {})
+      ),
+    [ledgerLines]
+  );
+
+  const personalByUser = useMemo(
+    () =>
+      (expense?.sahsiHarcamalar ?? expense?.SahsiHarcamalar ?? []).reduce((acc, item) => {
+        const uid = Number(item?.userId ?? item?.UserId);
+        const amountValue = Number(item?.tutar ?? item?.Tutar ?? 0);
+        if (!Number.isFinite(uid) || amountValue <= 0) return acc;
+        acc[uid] = (acc[uid] || 0) + amountValue;
+        return acc;
+      }, {}),
+    [expense]
+  );
+
+  const sharedByUser = useMemo(
+    () =>
+      ledgerLines.reduce((acc, line) => {
+        const uid = Number(line?.fromUserId ?? line?.FromUserId);
+        const amountValue = Number(line?.amount ?? line?.Amount ?? 0);
+        if (!Number.isFinite(uid) || amountValue <= 0) return acc;
+        acc[uid] = (acc[uid] || 0) + amountValue;
+        return acc;
+      }, {}),
+    [ledgerLines]
+  );
+
+  const perUserBreakdown = useMemo(() => {
+    const payerId = Number(expense?.odeyenUserId ?? expense?.OdeyenUserId);
+    const memberIds = new Set([
+      ...Object.keys(membersMap).map((id) => Number(id)),
+      ...Object.keys(personalByUser).map((id) => Number(id)),
+      ...Object.keys(sharedByUser).map((id) => Number(id)),
+      Number.isFinite(payerId) ? payerId : null,
+    ]);
+
+    return [...memberIds]
+      .filter((uid) => Number.isFinite(uid))
+      .map((uid) => {
+        const personalAmount = Number(personalByUser[uid] || 0);
+        const sharedAmountValue = Number(sharedByUser[uid] || 0);
+        return {
+          uid,
+          name: membersMap[uid] || (uid === payerId ? payerName : `Kullanici ${uid}`),
+          personalAmount,
+          sharedAmount: sharedAmountValue,
+          total: personalAmount + sharedAmountValue,
+        };
+      })
+      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'tr-TR'));
+  }, [expense, membersMap, payerName, personalByUser, sharedByUser]);
+
   const goBackSafe = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -292,7 +359,42 @@ export default function HarcamaDetayi({ navigation, route }) {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Paylasim</Text>
+          <Text style={styles.cardTitle}>Borc Akisi</Text>
+          {ledgerByPair.length > 0 ? (
+            ledgerByPair.map((item, idx) => (
+              <View key={`${item.fromUserId}-${item.toUserId}-${idx}`} style={styles.row}>
+                <Text style={styles.rowLabel}>
+                  {(membersMap[item.fromUserId] || `Kullanici ${item.fromUserId}`)} {' -> '}
+                  {(membersMap[item.toUserId] || `Kullanici ${item.toUserId}`)}
+                </Text>
+                <Text style={styles.rowValue}>{toMoney(item.amount)}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noteText}>Bu harcama icin borc akisi bulunmuyor.</Text>
+          )}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Kisi Bazli Dagilim</Text>
+          {perUserBreakdown.length > 0 ? (
+            perUserBreakdown.map((item) => (
+              <View key={item.uid} style={styles.breakdownRow}>
+                <Text style={styles.breakdownName}>{item.name}</Text>
+                <View style={styles.breakdownValues}>
+                  <Text style={styles.breakdownMeta}>Ozel: {toMoney(item.personalAmount)}</Text>
+                  <Text style={styles.breakdownMeta}>Ortak: {toMoney(item.sharedAmount)}</Text>
+                  <Text style={styles.breakdownTotal}>Toplam: {toMoney(item.total)}</Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noteText}>Kisi bazli dagilim bulunmuyor.</Text>
+          )}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Paylasim Ozeti</Text>
           {groupedLedger.length > 0 ? (
             groupedLedger.map((item) => (
               <View key={item.uid} style={styles.row}>
@@ -421,6 +523,30 @@ function makeStyles(theme) {
       color: theme.colors.text.primary,
       fontSize: 15,
       fontWeight: '700',
+    },
+    breakdownRow: {
+      paddingVertical: 8,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.neutral?.[100] || '#edf1f6',
+      gap: 6,
+    },
+    breakdownName: {
+      color: theme.colors.text.primary,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    breakdownValues: {
+      gap: 3,
+    },
+    breakdownMeta: {
+      color: theme.colors.text.secondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    breakdownTotal: {
+      color: theme.colors.text.primary,
+      fontSize: 13,
+      fontWeight: '800',
     },
     noteText: {
       color: theme.colors.text.primary,

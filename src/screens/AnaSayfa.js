@@ -312,7 +312,22 @@ const HomeScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             {recentExpenses.map((item, index) => (
-              <View key={`${item.id || index}`} style={styles.recentRow}>
+              <TouchableOpacity
+                key={`${item.id || index}`}
+                style={styles.recentRow}
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (item?.id) {
+                    navigateToHouseScreen(
+                      'HarcamaDetayi',
+                      { expenseId: item.id },
+                      { redirectTo: 'TumHarcamalar' }
+                    );
+                    return;
+                  }
+                  navigateToHouseScreen('TumHarcamalar', {}, { redirectTo: 'TumHarcamalar' });
+                }}
+              >
                 <View style={styles.recentMain}>
                   <Text style={styles.recentItemTitle} numberOfLines={1}>
                     {getExpenseDisplayTitle(item) || 'Harcama'}
@@ -322,7 +337,7 @@ const HomeScreen = ({ navigation }) => {
                   </Text>
                 </View>
                 <Text style={styles.recentAmount}>{formatCurrency(item.amount)}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
