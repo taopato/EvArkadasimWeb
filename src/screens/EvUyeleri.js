@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -159,6 +160,28 @@ export default function HouseMembersScreen({ route, navigation }) {
     return unsubscribe;
   }, [navigation, houseId]);
 
+  const removeMemberConfirmed = async (memberId, isRemovingSelf) => {
+    try {
+      await houseApi.removeMember(houseId, memberId);
+      showToast(isRemovingSelf ? 'Evden ayrildiniz' : 'Uye cikarildi', 'success');
+      if (isRemovingSelf) {
+        if (Number(user?.defaultHouseId) === Number(houseId)) {
+          await updateUser((prev) => ({
+            ...(prev || {}),
+            defaultHouseId: null,
+            defaultHouseName: null,
+          }));
+        }
+        navigation.navigate('Home');
+      } else {
+        fetchMembers();
+        fetchKPIData();
+      }
+    } catch (error) {
+      showToast(error?.response?.data?.message || 'Islem basarisiz', 'error');
+    }
+  };
+
   const handleRemoveMember = (memberId, memberName) => {
     const isRemovingSelf = Number(user?.id) === Number(memberId);
     const title = isRemovingSelf ? 'Evden Ayril' : 'Uyeyi Cikar';
@@ -166,33 +189,19 @@ export default function HouseMembersScreen({ route, navigation }) {
       ? 'Bu ev grubundan ayrilmak istediginizden emin misiniz?'
       : `${memberName} isimli uyeyi evden cikarmak istediginizden emin misiniz?`;
 
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm(message);
+      if (!confirmed) return;
+      removeMemberConfirmed(memberId, isRemovingSelf);
+      return;
+    }
+
     Alert.alert(title, message, [
       { text: 'Iptal', style: 'cancel' },
       {
         text: isRemovingSelf ? 'Ayril' : 'Cikar',
         style: 'destructive',
-        onPress: async () => {
-          try {
-            await houseApi.removeMember(houseId, memberId);
-            showToast(isRemovingSelf ? 'Evden ayrildiniz' : 'Uye cikarildi', 'success');
-            if (isRemovingSelf) {
-              // Varsayılan ev bu ev ise temizle
-              if (Number(user?.defaultHouseId) === Number(houseId)) {
-                await updateUser((prev) => ({
-                  ...(prev || {}),
-                  defaultHouseId: null,
-                  defaultHouseName: null,
-                }));
-              }
-              navigation.navigate('Home');
-            } else {
-              fetchMembers();
-              fetchKPIData();
-            }
-          } catch (error) {
-            showToast(error?.response?.data?.message || 'Islem basarisiz', 'error');
-          }
-        },
+        onPress: async () => removeMemberConfirmed(memberId, isRemovingSelf),
       },
     ]);
   };
@@ -419,3 +428,4 @@ const makeDynamicStyles = (theme) =>
   StyleSheet.create({
     primaryText: { color: theme.colors.text.onPrimary, fontWeight: '700' },
   });
+
