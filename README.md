@@ -1,6 +1,6 @@
-# Ev Arkadasim Web
+# Roomora Web
 
-Ev Arkadasim'in web istemcisi, ortak yasam duzenini tek bir uygulama icinde toplamak icin tasarlandi. Ev gruplari, harcamalar, duzenli giderler, odemeler, borc-alacak ozeti ve ev notlari gibi gunluk akislari sade bir arayuzle bir araya getirir.
+Roomora'nin web istemcisi, ortak yasam duzenini tek bir uygulama icinde toplamak icin tasarlandi. Ev gruplari, harcamalar, duzenli giderler, odemeler, borc-alacak ozeti ve ev notlari gibi gunluk akislari sade bir arayuzle bir araya getirir.
 
 Bu repo, ayni kod tabanini web ve mobil tarayici deneyimine yakin bir yapida surdurmek icin Expo ve React Native Web uzerinde gelistirilmektedir.
 
